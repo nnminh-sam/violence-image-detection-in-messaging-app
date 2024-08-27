@@ -71,10 +71,13 @@ export class ConversationService {
   }
 
   async findById(id: string): Promise<ConversationDocument> {
-    return await this.conversationModel.findOne({
-      _id: id,
-      deletedAt: null,
-    });
+    return await this.conversationModel
+      .findOne({
+        _id: id,
+        deletedAt: null,
+      })
+      .populate('createdBy')
+      .populate('hostId');
   }
 
   async update(
