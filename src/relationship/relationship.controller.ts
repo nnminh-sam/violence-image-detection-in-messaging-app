@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  NotFoundException,
 } from '@nestjs/common';
 import { RelationshipService } from './relationship.service';
 import { CreateRelationshipDto } from './dto/create-relationship.dto';
@@ -23,25 +24,29 @@ export class RelationshipController {
   constructor(private readonly relationshipService: RelationshipService) {}
 
   @Post()
-  create(@Body() createRelationshipDto: CreateRelationshipDto) {
-    return this.relationshipService.create(createRelationshipDto);
+  async create(@Body() createRelationshipDto: CreateRelationshipDto) {
+    return await this.relationshipService.create(createRelationshipDto);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.relationshipService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    const relationship = await this.relationshipService.findById(id);
+    if (!relationship) {
+      throw new NotFoundException('Relationship not found');
+    }
+    return relationship;
   }
 
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateRelationshipDto: UpdateRelationshipDto,
   ) {
-    return this.relationshipService.update(id, updateRelationshipDto);
+    return await this.relationshipService.update(id, updateRelationshipDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.relationshipService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.relationshipService.remove(id);
   }
 }

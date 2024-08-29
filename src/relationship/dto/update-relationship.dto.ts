@@ -1,4 +1,5 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateRelationshipDto } from './create-relationship.dto';
+import RelationshipStatus from '../entities/Relationship.enum';
 
-export class UpdateRelationshipDto extends PartialType(CreateRelationshipDto) {}
+export class UpdateRelationshipDto {
+  status: RelationshipStatus;
+}

@@ -12,6 +12,9 @@ import {
 } from './entities/relationship.entity';
 import { Model } from 'mongoose';
 import { UserService } from 'src/user/user.service';
+import RelationshipStatus, {
+  isRelationshipStatus,
+} from './entities/Relationship.enum';
 
 @Injectable()
 export class RelationshipService {
@@ -25,38 +28,26 @@ export class RelationshipService {
   async create(
     createRelationshipDto: CreateRelationshipDto,
   ): Promise<RelationshipDocument> {
-    if (createRelationshipDto.firstUser === createRelationshipDto.secondUser) {
+    if (createRelationshipDto.userA === createRelationshipDto.userB) {
       throw new BadRequestException(
         'First user and Second user must be different',
       );
     }
 
-    const firstUser = await this.userService.findById(
-      createRelationshipDto.firstUser,
-    );
-
-    if (!firstUser) {
-      throw new NotFoundException('First user not found');
+    const userA = await this.userService.findById(createRelationshipDto.userA);
+    if (!userA) {
+      throw new NotFoundException('User A not found');
     }
 
-    const secondUser = await this.userService.findById(
-      createRelationshipDto.secondUser,
-    );
-    if (!secondUser) {
-      throw new NotFoundException('Second user not found');
+    const userB = await this.userService.findById(createRelationshipDto.userB);
+    if (!userB) {
+      throw new NotFoundException('User B not found');
     }
 
-    let existedRelationship = await this.relationshipModel.findOne({
-      firstUser: firstUser._id,
-      secondUser: secondUser._id,
-      deletedAt: null,
-    });
-    if (existedRelationship) {
-      throw new BadRequestException('Relationship existed');
-    }
-    existedRelationship = await this.relationshipModel.findOne({
-      firstUser: secondUser._id,
-      secondUser: firstUser._id,
+    const existedRelationship = await this.relationshipModel.findOne({
+      ...(createRelationshipDto.userA <= createRelationshipDto.userB
+        ? { userA: userA._id, userB: userB._id }
+        : { userA: userB._id, userB: userA._id }),
       deletedAt: null,
     });
     if (existedRelationship) {
@@ -64,7 +55,10 @@ export class RelationshipService {
     }
 
     return await new this.relationshipModel({
-      ...createRelationshipDto,
+      ...(createRelationshipDto.userA <= createRelationshipDto.userB
+        ? { userA: userA._id, userB: userB._id }
+        : { userA: userB._id, userB: userA._id }),
+      status: createRelationshipDto.status,
       createdAt: new Date(),
       updatedAt: new Date(),
     }).save();
@@ -76,8 +70,8 @@ export class RelationshipService {
         _id: id,
         deletedAt: null,
       })
-      .populate('firstUser')
-      .populate('secondUser');
+      .populate('userA')
+      .populate('userB');
   }
 
   async update(
@@ -90,14 +84,37 @@ export class RelationshipService {
       throw new NotFoundException('Relationship not found');
     }
 
+    if (!updateRelationshipDto.status) {
+      throw new BadRequestException('Relationship status is required');
+    }
+
+    if (!isRelationshipStatus(updateRelationshipDto.status)) {
+      throw new BadRequestException('Relationship status is invalid');
+    }
+
     return await this.relationshipModel.findByIdAndUpdate(
       id,
-      {},
+      {
+        status: updateRelationshipDto.status,
+        updatedAt: new Date(),
+      },
       { new: true },
     );
   }
 
   async remove(id: string): Promise<RelationshipDocument> {
-    return `This action removes a #${id} relationship`;
+    const relationship: RelationshipDocument =
+      await this.relationshipModel.findById(id);
+    if (!relationship) {
+      throw new NotFoundException('Relationship not found');
+    }
+
+    return await this.relationshipModel.findByIdAndUpdate(
+      id,
+      {
+        deletedAt: new Date(),
+      },
+      { new: true },
+    );
   }
 }
