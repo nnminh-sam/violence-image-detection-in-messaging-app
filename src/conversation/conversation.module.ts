@@ -21,5 +21,6 @@ import { UserModule } from 'src/user/user.module';
   ],
   controllers: [ConversationController],
   providers: [ConversationService],
+  exports: [ConversationService],
 })
 export class ConversationModule {}

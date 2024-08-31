@@ -1,16 +1,16 @@
 import {
-  BadRequestException,
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import {
   Conversation,
   ConversationDocument,
 } from './entities/conversation.entity';
-import { Model } from 'mongoose';
 import { UserService } from 'src/user/user.service';
 import { UserDocument } from 'src/user/entities/user.entity';
 
