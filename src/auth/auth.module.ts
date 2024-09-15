@@ -6,6 +6,7 @@ import { UserModule } from 'src/user/user.module';
 import { PassportModule } from '@nestjs/passport';
 import { LocalStrategy } from './strategies/local.strategy';
 import * as dotenv from 'dotenv';
+import { JwtStrategy } from './strategies/jwt.strategy';
 
 dotenv.config();
 
@@ -21,6 +22,6 @@ dotenv.config();
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy],
+  providers: [AuthService, LocalStrategy, JwtStrategy],
 })
 export class AuthModule {}

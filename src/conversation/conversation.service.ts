@@ -12,7 +12,7 @@ import {
   ConversationDocument,
 } from './entities/conversation.entity';
 import { UserService } from 'src/user/user.service';
-import { UserDocument } from 'src/user/entities/user.entity';
+import { UserResponse } from 'src/user/dto/user-response.dto';
 
 @Injectable()
 export class ConversationService {
@@ -34,13 +34,13 @@ export class ConversationService {
       throw new BadRequestException('Host ID must not be empty');
     }
 
-    const creator: UserDocument = await this.userService.findById(
+    const creator: UserResponse = await this.userService.findById(
       createConversationDto.createdBy,
     );
     if (!creator) {
       throw new NotFoundException('Creator not found');
     }
-    const host: UserDocument = await this.userService.findById(
+    const host: UserResponse = await this.userService.findById(
       createConversationDto.hostId,
     );
     if (!host) {
@@ -101,7 +101,7 @@ export class ConversationService {
     }
 
     if (updateConversationDto?.createdBy) {
-      const creator: UserDocument = await this.userService.findById(
+      const creator: UserResponse = await this.userService.findById(
         updateConversationDto.createdBy,
       );
       if (!creator) {
@@ -111,7 +111,7 @@ export class ConversationService {
     }
 
     if (updateConversationDto?.hostId) {
-      const host: UserDocument = await this.userService.findById(
+      const host: UserResponse = await this.userService.findById(
         updateConversationDto.hostId,
       );
       if (!host) {

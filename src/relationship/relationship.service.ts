@@ -15,6 +15,7 @@ import { UserService } from 'src/user/user.service';
 import RelationshipStatus, {
   isRelationshipStatus,
 } from './entities/relationship.enum';
+import { UserResponse } from 'src/user/dto/user-response.dto';
 
 @Injectable()
 export class RelationshipService {
@@ -34,20 +35,24 @@ export class RelationshipService {
       );
     }
 
-    const userA = await this.userService.findById(createRelationshipDto.userA);
+    const userA: UserResponse = await this.userService.findById(
+      createRelationshipDto.userA,
+    );
     if (!userA) {
       throw new NotFoundException('User A not found');
     }
 
-    const userB = await this.userService.findById(createRelationshipDto.userB);
+    const userB: UserResponse = await this.userService.findById(
+      createRelationshipDto.userB,
+    );
     if (!userB) {
       throw new NotFoundException('User B not found');
     }
 
     const existedRelationship = await this.relationshipModel.findOne({
       ...(createRelationshipDto.userA <= createRelationshipDto.userB
-        ? { userA: userA._id, userB: userB._id }
-        : { userA: userB._id, userB: userA._id }),
+        ? { userA: userA.id, userB: userB.id }
+        : { userA: userB.id, userB: userA.id }),
       deletedAt: null,
     });
     if (existedRelationship) {
@@ -56,8 +61,8 @@ export class RelationshipService {
 
     return await new this.relationshipModel({
       ...(createRelationshipDto.userA <= createRelationshipDto.userB
-        ? { userA: userA._id, userB: userB._id }
-        : { userA: userB._id, userB: userA._id }),
+        ? { userA: userA.id, userB: userB.id }
+        : { userA: userB.id, userB: userA.id }),
       status: createRelationshipDto.status,
       createdAt: new Date(),
       updatedAt: new Date(),

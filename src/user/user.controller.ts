@@ -1,17 +1,20 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
   Delete,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtGuard } from 'src/auth/guards/jwt.guard';
 
 import * as dotenv from 'dotenv';
+import { UserResponse } from './dto/user-response.dto';
+import { CustomApiResponse } from 'src/helper/dto/custom-api-response.dto';
 
 dotenv.config();
 const envVar = process.env;
@@ -21,18 +24,32 @@ const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/users`;
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Get('/:id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findById(id);
+  @Get('/my')
+  @UseGuards(JwtGuard)
+  async findOne(@Req() request: any) {
+    const user: UserResponse = await this.userService.findById(request.user.id);
+    if (!user) {
+      return {
+        data: null,
+        error: {
+          status: 404,
+          name: 'NotFoundError',
+          message: 'Cannot find user',
+          details: [],
+        },
+      };
+    }
+
+    return user;
   }
 
   @Patch('/:id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.update(id, updateUserDto);
   }
 
   @Delete('/:id')
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }
 }

@@ -9,6 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { RegistrationPayloadDto } from 'src/auth/dto/registration-payload.dto';
 import * as bcrypt from 'bcrypt';
+import { UserResponse } from './dto/user-response.dto';
 
 @Injectable()
 export class UserService {
@@ -41,45 +42,51 @@ export class UserService {
     });
   }
 
-  async findById(id: string): Promise<UserDocument | null> {
-    return await this.userModel.findOne({
+  async findById(id: string): Promise<UserResponse> {
+    const { _doc }: any = await this.userModel.findOne({
       _id: id,
       deletedAt: null,
     });
+    const { password, __v, _id, ...data } = _doc;
+    const user: UserResponse = {
+      id: _id,
+      ...data,
+    };
+    return user;
   }
 
   async update(
     id: string,
     updateUserDto: UpdateUserDto,
   ): Promise<UserDocument> {
-    let user: User = await this.findById(id);
+    let user: UserResponse = await this.findById(id);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    if (updateUserDto?.firstName) {
-      user.firstName = updateUserDto.firstName;
-    }
+    // if (updateUserDto?.firstName) {
+    //   user.firstName = updateUserDto.firstName;
+    // }
 
-    if (updateUserDto?.lastName) {
-      user.lastName = updateUserDto.lastName;
-    }
+    // if (updateUserDto?.lastName) {
+    //   user.lastName = updateUserDto.lastName;
+    // }
 
-    if (updateUserDto?.email || updateUserDto?.email !== user.email) {
-      throw new BadRequestException('Email cannot be updated');
-    }
+    // if (updateUserDto?.email || updateUserDto?.email !== user.email) {
+    //   throw new BadRequestException('Email cannot be updated');
+    // }
 
-    if (updateUserDto?.gender) {
-      user.gender = updateUserDto.gender;
-    }
+    // if (updateUserDto?.gender) {
+    //   user.gender = updateUserDto.gender;
+    // }
 
-    if (updateUserDto?.dateOfBirth) {
-      user.dateOfBirth = updateUserDto.dateOfBirth;
-    }
+    // if (updateUserDto?.dateOfBirth) {
+    //   user.dateOfBirth = updateUserDto.dateOfBirth;
+    // }
 
-    if (updateUserDto?.phone) {
-      user.phone = updateUserDto.phone;
-    }
+    // if (updateUserDto?.phone) {
+    //   user.phone = updateUserDto.phone;
+    // }
 
     user.updatedAt = new Date();
     return await this.userModel
@@ -90,7 +97,7 @@ export class UserService {
   }
 
   async remove(id: string): Promise<UserDocument> {
-    let user: User = await this.findById(id);
+    let user: UserResponse = await this.findById(id);
     if (!user) {
       throw new NotFoundException('User not found');
     }
