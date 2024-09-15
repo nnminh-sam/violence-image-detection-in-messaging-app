@@ -21,11 +21,6 @@ const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/users`;
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
-  }
-
   @Get('/:id')
   findOne(@Param('id') id: string) {
     return this.userService.findById(id);

@@ -14,7 +14,7 @@ import { Model } from 'mongoose';
 import { UserService } from 'src/user/user.service';
 import RelationshipStatus, {
   isRelationshipStatus,
-} from './entities/Relationship.enum';
+} from './entities/relationship.enum';
 
 @Injectable()
 export class RelationshipService {

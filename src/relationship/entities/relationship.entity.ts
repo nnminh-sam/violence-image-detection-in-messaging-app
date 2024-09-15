@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import RelationshipStatus from './Relationship.enum';
+import RelationshipStatus from './relationship.enum';
 
 @Schema()
 export class Relationship {

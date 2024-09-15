@@ -1,4 +1,4 @@
-import RelationshipStatus from '../entities/Relationship.enum';
+import RelationshipStatus from '../entities/relationship.enum';
 
 export class UpdateRelationshipDto {
   status: RelationshipStatus;
