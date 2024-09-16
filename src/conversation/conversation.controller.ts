@@ -7,18 +7,22 @@ import {
   Param,
   Delete,
   NotFoundException,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 
 import * as dotenv from 'dotenv';
+import { JwtGuard } from 'src/auth/guards/jwt.guard';
 
 dotenv.config();
 
 const envVar = process.env;
 const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/conversations`;
 
+@UseGuards(JwtGuard)
 @Controller(API_URL)
 export class ConversationController {
   constructor(private readonly conversationService: ConversationService) {}
@@ -29,7 +33,8 @@ export class ConversationController {
   }
 
   @Get('/:id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Req() request: any, @Param('id') id: string) {
+    const user: any = request.user;
     const conversation = await this.conversationService.findById(id);
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
@@ -40,14 +45,21 @@ export class ConversationController {
 
   @Patch('/:id')
   async update(
+    @Req() request: any,
     @Param('id') id: string,
     @Body() updateConversationDto: UpdateConversationDto,
   ) {
-    return await this.conversationService.update(id, updateConversationDto);
+    const user: any = request.user;
+    return await this.conversationService.update(
+      id,
+      updateConversationDto,
+      user.id,
+    );
   }
 
   @Delete('/:id')
-  async remove(@Param('id') id: string) {
-    return await this.conversationService.remove(id);
+  async remove(@Req() request: any, @Param('id') id: string) {
+    const user: any = request.user;
+    return await this.conversationService.remove(id, user.id);
   }
 }

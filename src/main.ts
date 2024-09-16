@@ -14,6 +14,7 @@ async function bootstrap() {
       transform: true,
       stopAtFirstError: true,
       whitelist: true,
+      forbidNonWhitelisted: true,
       exceptionFactory: (errors) => {
         const result = errors.map((error) => ({
           property: error.property,
