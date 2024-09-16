@@ -1,4 +1,3 @@
-import { response, Response } from 'express';
 import {
   BadRequestException,
   Injectable,
@@ -44,27 +43,43 @@ export class UserService {
     });
   }
 
-  async findById(id: string): Promise<UserResponse | null> {
-    const response: any = await this.userModel.findOne({
-      _id: id,
-      deletedAt: null,
-    });
+  async findById(id: string, exceptionMessage?: string): Promise<UserResponse> {
+    const response = await this.userModel
+      .findOne({ _id: id, deletedAt: null })
+      .select('-password -__v') // * Exclude password and __v fields
+      .lean() // * Returns plain JS objects, not Mongoose Documents
+      .exec();
+
     if (!response) {
-      return null;
+      throw new NotFoundException(exceptionMessage || 'User not found');
     }
-    const { password, __v, _id, ...data } = response._doc;
+
+    const { _id, ...data } = response;
     const user: UserResponse = {
-      id: _id,
+      id: _id.toString(),
       ...data,
     };
+
     return user;
   }
 
-  async findUserById(id: string): Promise<UserResponse> {
-    const user: UserResponse = await this.findById(id);
-    if (!user) {
+  async findUnavailableUser(id: string) {
+    const response = await this.userModel
+      .findOne({ _id: id })
+      .select('-password -__v') // * Exclude password and __v fields
+      .lean() // * Returns plain JS objects, not Mongoose Documents
+      .exec();
+
+    if (!response) {
       throw new NotFoundException('User not found');
     }
+
+    const { _id, ...data } = response;
+    const user: UserResponse = {
+      id: _id.toString(),
+      ...data,
+    };
+
     return user;
   }
 
@@ -72,7 +87,7 @@ export class UserService {
     id: string,
     updateUserDto: UpdateUserDto,
   ): Promise<UserResponse> {
-    const user: UserResponse = await this.findUserById(id);
+    const user: UserResponse = await this.findById(id);
     const isUpdated = await this.userModel
       .findByIdAndUpdate(
         id,
@@ -93,7 +108,7 @@ export class UserService {
   }
 
   async remove(id: string): Promise<UserResponse> {
-    const user: UserResponse = await this.findUserById(id);
+    const user: UserResponse = await this.findById(id);
     const deleteTimestamp: Date = new Date();
     const isDeleted = await this.userModel.findByIdAndUpdate(
       id,

@@ -24,9 +24,10 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       status: 'error',
       statusCode: status,
       message: message,
-      ...(details && {
-        details,
-      }),
+      ...(details &&
+        details !== message && {
+          details,
+        }),
       timestamp: new Date().toISOString(),
       path: request.url,
     };
