@@ -1,6 +1,8 @@
+import { response, Response } from 'express';
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -42,12 +44,15 @@ export class UserService {
     });
   }
 
-  async findById(id: string): Promise<UserResponse> {
-    const { _doc }: any = await this.userModel.findOne({
+  async findById(id: string): Promise<UserResponse | null> {
+    const response: any = await this.userModel.findOne({
       _id: id,
       deletedAt: null,
     });
-    const { password, __v, _id, ...data } = _doc;
+    if (!response) {
+      return null;
+    }
+    const { password, __v, _id, ...data } = response._doc;
     const user: UserResponse = {
       id: _id,
       ...data,
@@ -55,16 +60,20 @@ export class UserService {
     return user;
   }
 
-  async update(
-    id: string,
-    updateUserDto: UpdateUserDto,
-  ): Promise<UserResponse> {
+  async findUserById(id: string): Promise<UserResponse> {
     const user: UserResponse = await this.findById(id);
     if (!user) {
       throw new NotFoundException('User not found');
     }
+    return user;
+  }
 
-    await this.userModel
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+  ): Promise<UserResponse> {
+    const user: UserResponse = await this.findUserById(id);
+    const isUpdated = await this.userModel
       .findByIdAndUpdate(
         id,
         {
@@ -77,16 +86,29 @@ export class UserService {
         },
       )
       .exec();
+    if (!isUpdated) {
+      throw new InternalServerErrorException('Cannot update user');
+    }
     return await this.findById(id);
   }
 
-  async remove(id: string): Promise<UserDocument> {
-    let user: UserResponse = await this.findById(id);
-    if (!user) {
-      throw new NotFoundException('User not found');
+  async remove(id: string): Promise<UserResponse> {
+    const user: UserResponse = await this.findUserById(id);
+    const deleteTimestamp: Date = new Date();
+    const isDeleted = await this.userModel.findByIdAndUpdate(
+      id,
+      {
+        ...user,
+        deletedAt: deleteTimestamp,
+      },
+      { new: true },
+    );
+    if (!isDeleted) {
+      throw new InternalServerErrorException('Cannot delete user');
     }
-
-    user.deletedAt = new Date();
-    return await this.userModel.findByIdAndUpdate(id, user, { new: true });
+    return {
+      ...user,
+      deletedAt: deleteTimestamp,
+    };
   }
 }
