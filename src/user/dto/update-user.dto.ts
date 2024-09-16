@@ -1,23 +1,32 @@
-import { IsDate, IsPhoneNumber, IsString, Length } from 'class-validator';
+import { IsDate, IsEnum, IsOptional, IsString, Length } from 'class-validator';
+import { Gender } from '../entities/gender.enum';
+import { Type } from 'class-transformer';
 
 export class UpdateUserDto {
-  @IsString()
-  @Length(1, 30)
-  firstName: string;
+  @IsOptional()
+  @IsString({ message: 'First name must be a string' })
+  @Length(2, 30, { message: 'First name length must be from 2 to 30' })
+  firstName?: string;
 
-  @IsString()
-  @Length(1, 30)
-  lastName: string;
+  @IsOptional()
+  @IsString({ message: 'Last name must be a string' })
+  @Length(2, 30, { message: 'Last name length must be from 2 to 30' })
+  lastName?: string;
 
-  @IsString()
-  @Length(1, 30)
-  username: string;
+  @IsOptional()
+  @IsString({ message: 'Username must be a string' })
+  @Length(1, 30, { message: 'Username length must be from 1 to 30' })
+  username?: string;
 
-  @IsPhoneNumber()
-  phone: string;
+  @IsOptional()
+  phone?: string;
 
-  gender: string;
+  @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
 
+  @IsOptional()
+  @Type(() => Date)
   @IsDate()
-  dateOfBirth: Date;
+  dateOfBirth?: Date;
 }

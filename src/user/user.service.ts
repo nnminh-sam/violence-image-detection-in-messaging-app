@@ -58,42 +58,26 @@ export class UserService {
   async update(
     id: string,
     updateUserDto: UpdateUserDto,
-  ): Promise<UserDocument> {
-    let user: UserResponse = await this.findById(id);
+  ): Promise<UserResponse> {
+    const user: UserResponse = await this.findById(id);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // if (updateUserDto?.firstName) {
-    //   user.firstName = updateUserDto.firstName;
-    // }
-
-    // if (updateUserDto?.lastName) {
-    //   user.lastName = updateUserDto.lastName;
-    // }
-
-    // if (updateUserDto?.email || updateUserDto?.email !== user.email) {
-    //   throw new BadRequestException('Email cannot be updated');
-    // }
-
-    // if (updateUserDto?.gender) {
-    //   user.gender = updateUserDto.gender;
-    // }
-
-    // if (updateUserDto?.dateOfBirth) {
-    //   user.dateOfBirth = updateUserDto.dateOfBirth;
-    // }
-
-    // if (updateUserDto?.phone) {
-    //   user.phone = updateUserDto.phone;
-    // }
-
-    user.updatedAt = new Date();
-    return await this.userModel
-      .findByIdAndUpdate(id, user, {
-        new: true,
-      })
+    await this.userModel
+      .findByIdAndUpdate(
+        id,
+        {
+          ...user,
+          ...updateUserDto,
+          updatedAt: new Date(),
+        },
+        {
+          new: true,
+        },
+      )
       .exec();
+    return await this.findById(id);
   }
 
   async remove(id: string): Promise<UserDocument> {

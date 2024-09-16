@@ -12,12 +12,12 @@ import { Gender } from 'src/user/entities/gender.enum';
 export class RegistrationPayloadDto {
   @IsNotEmpty()
   @IsString({ message: 'First name must be a string' })
-  @Length(1, 30, { message: 'First name length must be from 1 to 30' })
+  @Length(2, 30, { message: 'First name length must be from 2 to 30' })
   firstName: string;
 
   @IsNotEmpty()
   @IsString({ message: 'Last name must be a string' })
-  @Length(1, 30, { message: 'Last name length must be from 1 to 30' })
+  @Length(2, 30, { message: 'Last name length must be from 2 to 30' })
   lastName: string;
 
   @IsNotEmpty()
