@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import * as dotenv from 'dotenv';
 import { LocalGuard } from './guards/local.guard';
 import { RegistrationPayloadDto } from './dto/registration-payload.dto';
+import { ValidationPipe } from '../helper/pipe/validation.pipe';
 
 dotenv.config();
 const envVar = process.env;
