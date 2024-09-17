@@ -1,4 +1,10 @@
-import { IsMongoId, IsNotEmpty, IsString, Length } from 'class-validator';
+import {
+  IsMongoId,
+  IsNotEmpty,
+  IsNotEmptyObject,
+  IsString,
+  Length,
+} from 'class-validator';
 
 export class CreateConversationDto {
   @IsNotEmpty()
