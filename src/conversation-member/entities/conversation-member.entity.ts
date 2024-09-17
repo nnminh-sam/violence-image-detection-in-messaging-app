@@ -1,22 +1,21 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { ConversationMemberStatus } from './conversation-member-status.enum';
+import { ConversationMemberRole } from './conversation-member-role.enum';
 
 @Schema({ timestamps: true })
 export class ConversationMember {
   @Prop({ required: true })
-  userId: string;
+  user: string;
 
   @Prop({ required: true })
-  conversationId: string;
+  conversation: string;
 
   @Prop({ required: true })
-  role: string;
-
-  @Prop({ default: true })
-  isActive: boolean;
+  role: ConversationMemberRole;
 
   @Prop({ default: null, nullable: true })
-  deletedAt: Date;
+  status: ConversationMemberStatus;
 }
 
 export type ConversationMemberDocument = ConversationMember & Document;
@@ -24,4 +23,4 @@ export type ConversationMemberDocument = ConversationMember & Document;
 export const ConversationMemberSchema =
   SchemaFactory.createForClass(ConversationMember);
 
-ConversationMemberSchema.index({ userId: 1, conversationId: 1 });
+ConversationMemberSchema.index({ user: 1, conversation: 1 }, { unique: true });

@@ -6,16 +6,21 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
+  Req,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConversationMemberService } from './conversation-member.service';
 import { CreateConversationMemberDto } from './dto/create-conversation-member.dto';
 import { UpdateConversationMemberDto } from './dto/update-conversation-member.dto';
 
 import * as dotenv from 'dotenv';
+import { JwtGuard } from 'src/auth/guards/jwt.guard';
 dotenv.config();
 const envVar = process.env;
 const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/conversation-members`;
 
+@UseGuards(JwtGuard)
 @Controller(API_URL)
 export class ConversationMemberController {
   constructor(
@@ -23,28 +28,41 @@ export class ConversationMemberController {
   ) {}
 
   @Post()
-  create(@Body() createConversationMemberDto: CreateConversationMemberDto) {
-    return this.conversationMemberService.create(createConversationMemberDto);
+  async create(
+    @Req() request: any,
+    @Body() createConversationMemberDto: CreateConversationMemberDto,
+  ) {
+    const user: any = request.user;
+    return await this.conversationMemberService.create(
+      user.id,
+      createConversationMemberDto,
+    );
   }
 
   @Get('/:id')
-  findOne(@Param('id') id: string) {
-    return this.conversationMemberService.findById(id);
+  async findOne(@Param('id') id: string) {
+    const data = await this.conversationMemberService.findById(id);
+    if (!data) throw new NotFoundException('Conversation membership not found');
+    return data;
   }
 
   @Patch('/:id')
-  update(
+  async update(
+    @Req() request: any,
     @Param('id') id: string,
     @Body() updateConversationMemberDto: UpdateConversationMemberDto,
   ) {
-    return this.conversationMemberService.update(
+    const user: any = request.user;
+    return await this.conversationMemberService.update(
       id,
+      user.id,
       updateConversationMemberDto,
     );
   }
 
   @Delete('/:id')
-  remove(@Param('id') id: string) {
-    return this.conversationMemberService.remove(id);
+  async remove(@Req() request: any, @Param('id') id: string) {
+    const user: any = request.user;
+    return await this.conversationMemberService.remove(id, user.id);
   }
 }

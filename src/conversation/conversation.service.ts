@@ -15,7 +15,6 @@ import {
 } from './entities/conversation.entity';
 import { UserService } from 'src/user/user.service';
 import { UserResponse } from 'src/user/dto/user-response.dto';
-import { ThrowNotFoundException } from 'src/helper/decorator/not-found.decorator';
 
 @Injectable()
 export class ConversationService {

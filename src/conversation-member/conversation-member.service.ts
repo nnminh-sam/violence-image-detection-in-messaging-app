@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateConversationMemberDto } from './dto/create-conversation-member.dto';
 import { UpdateConversationMemberDto } from './dto/update-conversation-member.dto';
@@ -13,6 +15,8 @@ import {
 } from './entities/conversation-member.entity';
 import { UserService } from 'src/user/user.service';
 import { ConversationService } from 'src/conversation/conversation.service';
+import { ConversationMemberStatus } from './entities/conversation-member-status.enum';
+import { ConversationMemberRole } from './entities/conversation-member-role.enum';
 
 @Injectable()
 export class ConversationMemberService {
@@ -26,69 +30,129 @@ export class ConversationMemberService {
   ) {}
 
   async create(
+    hostId: string,
     createConversationMemberDto: CreateConversationMemberDto,
   ): Promise<ConversationMemberDocument> {
-    if (!createConversationMemberDto?.userId) {
-      throw new BadRequestException('User ID must not be empty');
-    }
-
-    if (!createConversationMemberDto?.conversationId) {
-      throw new BadRequestException('Conversation ID must not be empty');
-    }
-
     const user = await this.userService.findById(
-      createConversationMemberDto.userId,
+      createConversationMemberDto.user,
     );
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    if (!user) throw new NotFoundException('User not found');
 
     const conversation = await this.conversationService.findById(
-      createConversationMemberDto.conversationId,
+      createConversationMemberDto.conversation,
     );
-    if (!conversation) {
-      throw new NotFoundException('Conversation not found');
-    }
+    if (!conversation) throw new NotFoundException('Conversation not found');
+    if (conversation.host !== hostId)
+      throw new UnauthorizedException(
+        'Request user must be the host of this conversation',
+      );
 
-    return await new this.conversationMemberModel({
-      ...createConversationMemberDto,
-      deletedAt: null,
-    }).save();
+    const membership = await this.findByUserIdAndConversationId(
+      createConversationMemberDto.user,
+      createConversationMemberDto.conversation,
+    );
+    if (membership)
+      throw new BadRequestException('Conversation membership existed');
+
+    try {
+      return await new this.conversationMemberModel({
+        ...createConversationMemberDto,
+        status: ConversationMemberStatus.PARTICIPATING,
+      }).save();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to create conversation member',
+        error,
+      );
+    }
   }
 
   async findById(id: string): Promise<ConversationMemberDocument> {
-    return await this.conversationMemberModel.findOne({
-      _id: id,
-      deletedAt: null,
-    });
+    return await this.conversationMemberModel
+      .findOne({
+        _id: id,
+      })
+      .populate('conversation')
+      .populate('user');
+  }
+
+  async findByUserIdAndConversationId(
+    userId: string,
+    conversationId: string,
+  ): Promise<ConversationMemberDocument> {
+    return await this.conversationMemberModel
+      .findOne({
+        user: userId,
+        conversation: conversationId,
+      })
+      .populate('conversation')
+      .populate('user');
   }
 
   async update(
     id: string,
+    hostId: string,
     updateConversationMemberDto: UpdateConversationMemberDto,
   ): Promise<ConversationMemberDocument> {
-    const conversationMember = await this.findById(id);
-    if (!conversationMember) {
-      throw new NotFoundException('Conversation member not found');
-    }
-
-    return await this.conversationMemberModel.findByIdAndUpdate(
-      id,
-      updateConversationMemberDto,
-      { new: true },
+    const membership = await this.findById(id);
+    if (!membership)
+      throw new NotFoundException('Conversation membership not found');
+    const conversation = await this.conversationService.findById(
+      membership.conversation,
     );
+    if (!conversation) throw new NotFoundException('Conversation not found');
+    if (conversation.host !== hostId)
+      throw new UnauthorizedException(
+        'User must be the host of this conversation',
+      );
+
+    try {
+      return await this.conversationMemberModel.findByIdAndUpdate(
+        id,
+        {
+          ...updateConversationMemberDto,
+          updatedAt: new Date(),
+        },
+        { new: true },
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to update conversation membership',
+        error,
+      );
+    }
   }
 
-  async remove(id: string): Promise<ConversationMemberDocument> {
-    const conversationMember = await this.findById(id);
-    if (!conversationMember) {
-      throw new NotFoundException('Conversation member not found');
-    }
-
-    return await this.conversationMemberModel.findByIdAndUpdate(
-      id,
-      { deletedAt: new Date() },
-      { new: true },
+  async remove(
+    id: string,
+    hostId: string,
+  ): Promise<ConversationMemberDocument> {
+    const membership = await this.findById(id);
+    if (!membership)
+      throw new NotFoundException('Conversation membership not found');
+    const conversation = await this.conversationService.findById(
+      membership.conversation,
     );
+    if (!conversation) throw new NotFoundException('Conversation not found');
+    if (conversation.host !== hostId)
+      throw new UnauthorizedException(
+        'User must be the host of this conversation',
+      );
+
+    try {
+      return await this.conversationMemberModel.findByIdAndUpdate(
+        id,
+        {
+          status: ConversationMemberStatus.REMOVED,
+          updatedAt: new Date(),
+        },
+        { new: true },
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to remove conversation membership',
+        error,
+      );
+    }
   }
 }

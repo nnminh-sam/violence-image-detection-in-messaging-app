@@ -1,9 +1,16 @@
+import { IsEnum, IsMongoId, IsNotEmpty } from 'class-validator';
+import { ConversationMemberRole } from '../entities/conversation-member-role.enum';
+
 export class CreateConversationMemberDto {
-  userId: string;
+  @IsNotEmpty()
+  @IsMongoId()
+  user: string;
 
-  conversationId: string;
+  @IsNotEmpty()
+  @IsMongoId()
+  conversation: string;
 
-  role: string;
-
-  isActive: boolean;
+  @IsNotEmpty()
+  @IsEnum(ConversationMemberRole)
+  role: ConversationMemberRole;
 }
