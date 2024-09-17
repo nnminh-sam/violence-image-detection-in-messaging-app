@@ -27,13 +27,16 @@ export class UserService {
 
     const hashedPassword: string = await bcrypt.hash(payload.password, 10);
 
-    const newUser: UserDocument = new this.userModel({
-      ...payload,
-      password: hashedPassword,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    return await newUser.save();
+    try {
+      return await new this.userModel({
+        ...payload,
+        password: hashedPassword,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }).save();
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to create user', error);
+    }
   }
 
   async findByEmail(email: string): Promise<UserDocument | null> {
@@ -43,44 +46,32 @@ export class UserService {
     });
   }
 
-  async findById(id: string, exceptionMessage?: string): Promise<UserResponse> {
+  async findById(id: string): Promise<UserResponse | null> {
     const response = await this.userModel
       .findOne({ _id: id, deletedAt: null })
       .select('-password -__v') // * Exclude password and __v fields
       .lean() // * Returns plain JS objects, not Mongoose Documents
       .exec();
 
-    if (!response) {
-      throw new NotFoundException(exceptionMessage || 'User not found');
-    }
-
     const { _id, ...data } = response;
-    const user: UserResponse = {
+    return {
       id: _id.toString(),
       ...data,
     };
-
-    return user;
   }
 
-  async findUnavailableUser(id: string) {
+  async findUnavailableUser(id: string): Promise<UserResponse | null> {
     const response = await this.userModel
       .findOne({ _id: id })
       .select('-password -__v') // * Exclude password and __v fields
       .lean() // * Returns plain JS objects, not Mongoose Documents
       .exec();
 
-    if (!response) {
-      throw new NotFoundException('User not found');
-    }
-
     const { _id, ...data } = response;
-    const user: UserResponse = {
+    return {
       id: _id.toString(),
       ...data,
     };
-
-    return user;
   }
 
   async update(
@@ -88,42 +79,41 @@ export class UserService {
     updateUserDto: UpdateUserDto,
   ): Promise<UserResponse> {
     const user: UserResponse = await this.findById(id);
-    const isUpdated = await this.userModel
-      .findByIdAndUpdate(
-        id,
-        {
-          ...user,
-          ...updateUserDto,
-          updatedAt: new Date(),
-        },
-        {
-          new: true,
-        },
-      )
-      .exec();
-    if (!isUpdated) {
-      throw new InternalServerErrorException('Cannot update user');
+    if (!user) throw new NotFoundException('User not found');
+
+    try {
+      await this.userModel
+        .findByIdAndUpdate(
+          id,
+          {
+            ...updateUserDto,
+            updatedAt: new Date(),
+          },
+          { new: true },
+        )
+        .exec();
+      return await this.findById(id);
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to update user', error);
     }
-    return await this.findById(id);
   }
 
   async remove(id: string): Promise<UserResponse> {
     const user: UserResponse = await this.findById(id);
-    const deleteTimestamp: Date = new Date();
-    const isDeleted = await this.userModel.findByIdAndUpdate(
-      id,
-      {
-        ...user,
-        deletedAt: deleteTimestamp,
-      },
-      { new: true },
-    );
-    if (!isDeleted) {
-      throw new InternalServerErrorException('Cannot delete user');
+    if (!user) throw new NotFoundException('User not found');
+
+    try {
+      await this.userModel.findByIdAndUpdate(
+        id,
+        {
+          ...user,
+          deletedAt: new Date(),
+        },
+        { new: true },
+      );
+      return await this.findUnavailableUser(id);
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to delete user', error);
     }
-    return {
-      ...user,
-      deletedAt: deleteTimestamp,
-    };
   }
 }

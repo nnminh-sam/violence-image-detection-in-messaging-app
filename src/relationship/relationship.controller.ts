@@ -5,9 +5,9 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   Req,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { RelationshipService } from './relationship.service';
 import { CreateRelationshipDto } from './dto/create-relationship.dto';
@@ -15,6 +15,7 @@ import { UpdateRelationshipDto } from './dto/update-relationship.dto';
 
 import * as dotenv from 'dotenv';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
+import { BlockUserDto } from './dto/block-user.dto';
 
 dotenv.config();
 
@@ -40,7 +41,15 @@ export class RelationshipController {
   @Get(':id')
   async findOne(@Req() request: any, @Param('id') id: string) {
     const user: any = request.user;
-    return await this.relationshipService.findById(id, null, user.id);
+    const data = await this.relationshipService.findById(id, user.id);
+    if (!data) throw new NotFoundException('Relationship not found');
+    return data;
+  }
+
+  @Patch('block-user')
+  async blockUser(@Req() request: any, @Body() blockUserDto: BlockUserDto) {
+    const user: any = request.user;
+    return await this.relationshipService.blockUser(user.id, blockUserDto);
   }
 
   @Patch(':id')
@@ -55,11 +64,5 @@ export class RelationshipController {
       updateRelationshipDto,
       user.id,
     );
-  }
-
-  @Delete(':id')
-  async remove(@Req() request: any, @Param('id') id: string) {
-    const user: any = request.user;
-    return await this.relationshipService.remove(id, user.id);
   }
 }

@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateRelationshipDto } from './dto/create-relationship.dto';
 import { UpdateRelationshipDto } from './dto/update-relationship.dto';
@@ -14,6 +15,8 @@ import {
 import { Model } from 'mongoose';
 import { UserService } from 'src/user/user.service';
 import { UserResponse } from 'src/user/dto/user-response.dto';
+import { BlockUserDto } from './dto/block-user.dto';
+import RelationshipStatus from './entities/relationship.enum';
 
 @Injectable()
 export class RelationshipService {
@@ -35,66 +38,52 @@ export class RelationshipService {
 
     const userA: UserResponse = await this.userService.findById(
       createRelationshipDto.userA,
-      'User A not found',
     );
+    if (!userA) throw new BadRequestException('User A not found');
 
     const userB: UserResponse = await this.userService.findById(
       createRelationshipDto.userB,
-      'User B not found',
     );
+    if (!userB) throw new BadRequestException('User B not found');
 
-    const existedRelationship = await this.findByUserIds(
-      userA.id,
-      userB.id,
-      true,
-    );
+    const existedRelationship = await this.findByUserIds(userA.id, userB.id);
     if (existedRelationship) {
       throw new BadRequestException('Relationship existed');
     }
 
-    const dataResponse: RelationshipDocument = await new this.relationshipModel(
-      {
+    try {
+      return await new this.relationshipModel({
         ...(createRelationshipDto.userA <= createRelationshipDto.userB
           ? { userA: userA.id, userB: userB.id }
           : { userA: userB.id, userB: userA.id }),
         status: createRelationshipDto.status,
         createdAt: new Date(),
         updatedAt: new Date(),
-      },
-    ).save();
-
-    if (!dataResponse) {
-      throw new InternalServerErrorException('Cannot create relationship');
+      }).save();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to create relationship',
+        error,
+      );
     }
-
-    return dataResponse;
   }
 
   async findById(
     id: string,
-    exceptionMessage?: string,
-    requestedUser?: string,
-  ): Promise<RelationshipDocument> {
-    const data: RelationshipDocument = await this.relationshipModel
+    requestedUser: string,
+  ): Promise<RelationshipDocument | null> {
+    return await this.relationshipModel
       .findOne({
         _id: id,
-        deletedAt: null,
-        ...(requestedUser && {
-          $or: [{ userA: requestedUser }, { userB: requestedUser }],
-        }),
+        $or: [{ userA: requestedUser }, { userB: requestedUser }],
       })
       .populate('userA')
       .populate('userB');
-    if (!data) {
-      throw new NotFoundException(exceptionMessage || 'Relationship not found');
-    }
-    return data;
   }
 
   async findByUserIds(
     userAId: string,
     userBId: string,
-    includeDeletedCollection?: boolean,
   ): Promise<RelationshipDocument | null> {
     return await this.relationshipModel.findOne({
       ...(userAId <= userBId
@@ -106,9 +95,6 @@ export class RelationshipService {
             userA: userBId,
             userB: userAId,
           }),
-      ...(!includeDeletedCollection && {
-        deletedAt: null,
-      }),
     });
   }
 
@@ -131,42 +117,69 @@ export class RelationshipService {
   async update(
     id: string,
     updateRelationshipDto: UpdateRelationshipDto,
-    requestedUser?: string,
-  ): Promise<RelationshipDocument> {
-    const relationship: any = await this.findById(id, null, requestedUser);
-
-    return await this.relationshipModel.findByIdAndUpdate(
-      id,
-      {
-        ...updateRelationshipDto,
-        updatedAt: new Date(),
-      },
-      { new: true },
-    );
-  }
-
-  async remove(
-    id: string,
     requestedUser: string,
   ): Promise<RelationshipDocument> {
-    const relationship: RelationshipDocument = await this.findById(
-      id,
-      null,
-      requestedUser,
-    );
+    const relationship: any = await this.findById(id, requestedUser);
+    if (!relationship) throw new NotFoundException('Relationship not found');
 
-    const timestamp = new Date();
-    const isDeleted: RelationshipDocument =
-      await this.relationshipModel.findByIdAndUpdate(
+    try {
+      return await this.relationshipModel.findByIdAndUpdate(
         id,
         {
-          deletedAt: timestamp,
+          ...updateRelationshipDto,
+          updatedAt: new Date(),
         },
         { new: true },
       );
-    if (!isDeleted) {
-      throw new InternalServerErrorException('Cannot delete user');
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to update relationship',
+        error,
+      );
     }
-    return isDeleted;
+  }
+
+  async blockUser(
+    requestedUser: string,
+    blockUserDto: BlockUserDto,
+  ): Promise<RelationshipDocument> {
+    const blockBy: UserResponse = await this.userService.findById(
+      blockUserDto.blockedBy,
+    );
+    if (!blockBy) throw new NotFoundException('Block by user not found');
+    if (blockUserDto.blockedBy !== requestedUser)
+      throw new UnauthorizedException('Unauthorized user');
+
+    const targetUser: UserResponse = await this.userService.findById(
+      blockUserDto.targetUser,
+    );
+    if (!targetUser) throw new NotFoundException('Target user not found');
+
+    const relationship: RelationshipDocument = await this.findByUserIds(
+      blockUserDto.blockedBy,
+      blockUserDto.targetUser,
+    );
+    if (!relationship) throw new NotFoundException('Relationship not found');
+    if (relationship.blockedAt)
+      throw new BadRequestException('Relationship is already blocked');
+
+    try {
+      const timestamp: Date = new Date();
+      const status: RelationshipStatus =
+        blockUserDto.blockedBy === relationship.userA
+          ? RelationshipStatus.BLOCKED_USER_A
+          : RelationshipStatus.BLOCKED_USER_B;
+      return await this.relationshipModel.findByIdAndUpdate(
+        relationship._id,
+        {
+          updatedAt: timestamp,
+          blockedAt: timestamp,
+          status,
+        },
+        { new: true },
+      );
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to block user', error);
+    }
   }
 }

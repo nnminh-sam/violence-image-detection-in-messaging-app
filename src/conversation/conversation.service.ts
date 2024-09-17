@@ -30,11 +30,9 @@ export class ConversationService {
   ): Promise<ConversationDocument> {
     const creator: UserResponse = await this.userService.findById(
       createConversationDto.createdBy,
-      'Creator not found',
     );
     const host: UserResponse = await this.userService.findById(
       createConversationDto.hostId,
-      'Host not found',
     );
 
     const nameExisted = await this.checkExistingName(

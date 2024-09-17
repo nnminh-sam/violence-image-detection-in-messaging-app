@@ -20,7 +20,7 @@ export class Relationship {
   updatedAt: Date;
 
   @Prop({ default: null })
-  deletedAt: Date;
+  blockedAt: Date;
 }
 
 export type RelationshipDocument = Relationship & Document;
