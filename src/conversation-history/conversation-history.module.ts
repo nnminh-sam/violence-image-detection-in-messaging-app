@@ -15,7 +15,7 @@ import { UserModule } from 'src/user/user.module';
       {
         name: ConversationHistory.name,
         schema: ConversationHistorySchema,
-        collection: 'conversation-histories',
+        collection: 'conversation_histories',
       },
     ]),
     UserModule,

@@ -7,7 +7,7 @@ export class ConversationHistory {
   sendBy: string;
 
   @Prop({ required: true, nullable: false })
-  conversationId: string;
+  conversation: string;
 
   @Prop({ required: true, nullable: false })
   message: string;

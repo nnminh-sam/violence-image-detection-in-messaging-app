@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateConversationHistoryDto } from './dto/create-conversation-history.dto';
@@ -28,36 +29,27 @@ export class ConversationHistoryService {
   async create(
     createConversationHistoryDto: CreateConversationHistoryDto,
   ): Promise<ConversationHistoryDocument> {
-    if (!createConversationHistoryDto?.sendBy) {
-      throw new BadRequestException('Send by is required');
-    }
-
-    if (!createConversationHistoryDto?.conversationId) {
-      throw new BadRequestException('Conversation id is required');
-    }
-
-    if (!createConversationHistoryDto?.message) {
-      throw new BadRequestException('Message is required');
-    }
-
     const sender = await this.userService.findById(
       createConversationHistoryDto.sendBy,
     );
-    if (!sender) {
-      throw new NotFoundException('Sender not found');
-    }
+    if (!sender) throw new NotFoundException('Sender not found');
 
     const conversation = await this.conversationService.findById(
-      createConversationHistoryDto.conversationId,
+      createConversationHistoryDto.conversation,
     );
-    if (!conversation) {
-      throw new NotFoundException('Conversation not found');
-    }
+    if (!conversation) throw new NotFoundException('Conversation not found');
 
-    return await new this.conversationHistoryModel({
-      ...createConversationHistoryDto,
-      createdAt: new Date(),
-    }).save();
+    try {
+      return await new this.conversationHistoryModel({
+        ...createConversationHistoryDto,
+        createdAt: new Date(),
+      }).save();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to create conversation history',
+        error,
+      );
+    }
   }
 
   async findAll(): Promise<ConversationHistoryDocument[]> {
@@ -66,7 +58,7 @@ export class ConversationHistoryService {
         deletedAt: null,
       })
       .populate('sendBy')
-      .populate('conversationId')
+      .populate('conversation')
       .exec();
   }
 
@@ -77,7 +69,7 @@ export class ConversationHistoryService {
         deletedAt: null,
       })
       .populate('sendBy')
-      .populate('conversationId')
+      .populate('conversation')
       .exec();
   }
 
@@ -86,13 +78,8 @@ export class ConversationHistoryService {
     updateConversationHistoryDto: UpdateConversationHistoryDto,
   ): Promise<ConversationHistoryDocument> {
     const conversationHistory = await this.findById(id);
-    if (!conversationHistory) {
+    if (!conversationHistory)
       throw new NotFoundException('Conversation history not found');
-    }
-
-    if (!updateConversationHistoryDto?.message) {
-      throw new BadRequestException('Message is required');
-    }
 
     return await this.conversationHistoryModel.findByIdAndUpdate(
       id,
