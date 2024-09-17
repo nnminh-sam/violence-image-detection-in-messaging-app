@@ -36,10 +36,7 @@ export class ConversationController {
   async findOne(@Req() request: any, @Param('id') id: string) {
     const user: any = request.user;
     const conversation = await this.conversationService.findById(id);
-    if (!conversation) {
-      throw new NotFoundException('Conversation not found');
-    }
-
+    if (!conversation) throw new NotFoundException('Conversation not found');
     return conversation;
   }
 

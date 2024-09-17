@@ -17,5 +17,5 @@ export class UpdateConversationDto {
 
   @IsOptional()
   @IsMongoId()
-  hostId: string;
+  host: string;
 }

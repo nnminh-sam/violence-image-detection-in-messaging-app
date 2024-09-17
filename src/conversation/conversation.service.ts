@@ -3,6 +3,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
@@ -31,22 +32,31 @@ export class ConversationService {
     const creator: UserResponse = await this.userService.findById(
       createConversationDto.createdBy,
     );
-    const host: UserResponse = await this.userService.findById(
-      createConversationDto.hostId,
-    );
+    if (!creator) throw new NotFoundException('Conversation creator not found');
 
-    const nameExisted = await this.checkExistingName(
+    const host: UserResponse = await this.userService.findById(
+      createConversationDto.host,
+    );
+    if (!host) throw new NotFoundException('Conversation host not found');
+
+    const existedName = await this.checkExistingName(
       createConversationDto.name,
     );
-    if (nameExisted) {
+    if (existedName)
       throw new BadRequestException("Conversation's name is taken");
-    }
 
-    return await new this.conversationModel({
-      ...createConversationDto,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }).save();
+    try {
+      return await new this.conversationModel({
+        ...createConversationDto,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }).save();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to create conversation',
+        error,
+      );
+    }
   }
 
   async checkExistingName(name: string): Promise<Boolean> {
@@ -58,7 +68,6 @@ export class ConversationService {
     return conversation != null ? true : false;
   }
 
-  @ThrowNotFoundException('Conversation not found')
   async findById(id: string): Promise<ConversationDocument> {
     return await this.conversationModel
       .findOne({
@@ -66,13 +75,13 @@ export class ConversationService {
         deletedAt: null,
       })
       .populate('createdBy')
-      .populate('hostId');
+      .populate('host');
   }
 
   async isConversationHost(conversationId: string, userId: string) {
     const conversation: ConversationDocument =
       await this.findById(conversationId);
-    return conversation.hostId === userId;
+    return conversation.host === userId;
   }
 
   async update(
@@ -81,25 +90,28 @@ export class ConversationService {
     requestedUser: string,
   ): Promise<ConversationDocument> {
     const conversation: ConversationDocument = await this.findById(id);
-    const isAuthorizedUser = await this.isConversationHost(id, requestedUser);
-    if (!isAuthorizedUser) {
-      throw new UnauthorizedException('Unauthorized user');
-    }
+    if (!conversation) throw new NotFoundException('Conversation not found');
 
-    const isUpdated = await this.conversationModel.findByIdAndUpdate(
-      id,
-      {
-        ...updateConversationDto,
-        updatedAt: new Date(),
-      },
-      {
-        new: true,
-      },
-    );
-    if (!isUpdated) {
-      throw new InternalServerErrorException('Cannot update conversation');
+    const isAuthorizedUser = await this.isConversationHost(id, requestedUser);
+    if (!isAuthorizedUser) throw new UnauthorizedException('Unauthorized user');
+
+    try {
+      return await this.conversationModel.findByIdAndUpdate(
+        id,
+        {
+          ...updateConversationDto,
+          updatedAt: new Date(),
+        },
+        {
+          new: true,
+        },
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to update conversation',
+        error,
+      );
     }
-    return isUpdated;
   }
 
   async remove(
@@ -107,17 +119,24 @@ export class ConversationService {
     requestedUser: string,
   ): Promise<ConversationDocument> {
     const conversation = await this.findById(id);
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
     const isAuthorizedUser = await this.isConversationHost(id, requestedUser);
     if (!isAuthorizedUser) {
       throw new UnauthorizedException('Unauthorized user');
     }
 
-    return await this.conversationModel.findByIdAndUpdate(
-      id,
-      { deletedAt: new Date() },
-      {
-        new: true,
-      },
-    );
+    try {
+      return await this.conversationModel.findByIdAndUpdate(
+        id,
+        { deletedAt: new Date() },
+        { new: true },
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to remove conversation',
+        error,
+      );
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
 import { map, Observable } from 'rxjs';
 
+// TODO: refactor this transformer
 const extractDataFromRawData = (rawData) => {
   const { metadata, _doc, ...data } = rawData;
   let result = data;

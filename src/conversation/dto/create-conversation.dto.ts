@@ -27,5 +27,5 @@ export class CreateConversationDto {
 
   @IsNotEmpty()
   @IsMongoId()
-  hostId: string;
+  host: string;
 }
