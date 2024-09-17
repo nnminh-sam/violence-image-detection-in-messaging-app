@@ -39,6 +39,18 @@ export class ConversationMemberController {
     );
   }
 
+  @Get('conversation/:conversationId')
+  async findConversationMembers(
+    @Req() request: any,
+    @Param('conversationId') conversationId: string,
+  ) {
+    const user: any = request.user;
+    return this.conversationMemberService.findConversationMembers(
+      conversationId,
+      user.id,
+    );
+  }
+
   @Get('/:id')
   async findOne(@Param('id') id: string) {
     const data = await this.conversationMemberService.findById(id);

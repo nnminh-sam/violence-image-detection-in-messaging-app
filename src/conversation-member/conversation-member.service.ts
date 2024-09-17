@@ -16,7 +16,7 @@ import {
 import { UserService } from 'src/user/user.service';
 import { ConversationService } from 'src/conversation/conversation.service';
 import { ConversationMemberStatus } from './entities/conversation-member-status.enum';
-import { ConversationMemberRole } from './entities/conversation-member-role.enum';
+import { ConversationDocument } from 'src/conversation/entities/conversation.entity';
 
 @Injectable()
 export class ConversationMemberService {
@@ -87,6 +87,21 @@ export class ConversationMemberService {
       })
       .populate('conversation')
       .populate('user');
+  }
+
+  async findConversationMembers(conversationId: string, requestedUser: string) {
+    const conversation: ConversationDocument =
+      await this.conversationService.findById(conversationId);
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
+    const membership: ConversationMemberDocument =
+      await this.findByUserIdAndConversationId(requestedUser, conversationId);
+    if (!membership) throw new UnauthorizedException('Unauthorized user');
+
+    return await this.conversationMemberModel.find({
+      conversation: conversationId,
+      status: ConversationMemberStatus.PARTICIPATING,
+    });
   }
 
   async update(
