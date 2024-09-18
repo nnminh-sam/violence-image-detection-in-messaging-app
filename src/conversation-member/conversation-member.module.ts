@@ -8,6 +8,7 @@ import {
 } from './entities/conversation-member.entity';
 import { UserModule } from 'src/user/user.module';
 import { ConversationModule } from 'src/conversation/conversation.module';
+import { MembershipValidationListener } from './listener/membership-validation.listener';
 
 @Module({
   imports: [
@@ -22,6 +23,6 @@ import { ConversationModule } from 'src/conversation/conversation.module';
     ConversationModule,
   ],
   controllers: [ConversationMemberController],
-  providers: [ConversationMemberService],
+  providers: [ConversationMemberService, MembershipValidationListener],
 })
 export class ConversationMemberModule {}

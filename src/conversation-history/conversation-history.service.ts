@@ -1,19 +1,25 @@
 import {
-  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateConversationHistoryDto } from './dto/create-conversation-history.dto';
 import { UpdateConversationHistoryDto } from './dto/update-conversation-history.dto';
 import {
   ConversationHistory,
   ConversationHistoryDocument,
+  PopulatedConversationHistoryDocument,
 } from './entities/conversation-history.entity';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { UserService } from 'src/user/user.service';
 import { ConversationService } from 'src/conversation/conversation.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ConversationMemberEvent } from 'src/conversation-member/entities/conversation-member-event.enum';
+import { ConversationMemberDocument } from 'src/conversation-member/entities/conversation-member.entity';
+import { ConversationDocument } from 'src/conversation/entities/conversation.entity';
+import { UserDocument } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class ConversationHistoryService {
@@ -24,11 +30,28 @@ export class ConversationHistoryService {
     private readonly userService: UserService,
 
     private readonly conversationService: ConversationService,
+
+    private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  private async emitMembershipValidationEvent(
+    userId: string,
+    conversationId: string,
+  ): Promise<ConversationMemberDocument> {
+    const data = await this.eventEmitter.emitAsync(
+      ConversationMemberEvent.FIND_BY_USER_AND_CONVERSATION,
+      { userId, conversationId },
+    );
+    return data[0] as ConversationMemberDocument;
+  }
 
   async create(
     createConversationHistoryDto: CreateConversationHistoryDto,
+    requestedUser: string,
   ): Promise<ConversationHistoryDocument> {
+    if (createConversationHistoryDto.sendBy !== requestedUser)
+      throw new UnauthorizedException('Unauthorized user');
+
     const sender = await this.userService.findById(
       createConversationHistoryDto.sendBy,
     );
@@ -38,6 +61,13 @@ export class ConversationHistoryService {
       createConversationHistoryDto.conversation,
     );
     if (!conversation) throw new NotFoundException('Conversation not found');
+
+    const membership: ConversationMemberDocument =
+      await this.emitMembershipValidationEvent(
+        createConversationHistoryDto.sendBy,
+        createConversationHistoryDto.conversation,
+      );
+    if (!membership) throw new UnauthorizedException('Unauthorized user');
 
     try {
       return await new this.conversationHistoryModel({
@@ -62,42 +92,78 @@ export class ConversationHistoryService {
       .exec();
   }
 
-  async findById(id: string): Promise<ConversationHistoryDocument> {
-    return await this.conversationHistoryModel
+  async findById(id: string): Promise<PopulatedConversationHistoryDocument> {
+    return (await this.conversationHistoryModel
       .findOne({
         _id: id,
         deletedAt: null,
       })
       .populate('sendBy')
       .populate('conversation')
-      .exec();
+      .exec()) as PopulatedConversationHistoryDocument;
   }
 
   async update(
     id: string,
     updateConversationHistoryDto: UpdateConversationHistoryDto,
+    requestedUser: string,
   ): Promise<ConversationHistoryDocument> {
-    const conversationHistory = await this.findById(id);
-    if (!conversationHistory)
-      throw new NotFoundException('Conversation history not found');
+    const history: PopulatedConversationHistoryDocument =
+      await this.findById(id);
+    if (!history) throw new NotFoundException('History not found');
 
-    return await this.conversationHistoryModel.findByIdAndUpdate(
-      id,
-      {
-        ...updateConversationHistoryDto,
-        updatedAt: new Date(),
-      },
-      { new: true },
-    );
+    const membership: ConversationMemberDocument =
+      await this.emitMembershipValidationEvent(
+        requestedUser,
+        history.conversation.id,
+      );
+    if (!membership) throw new UnauthorizedException('Unauthorized user');
+
+    try {
+      return await this.conversationHistoryModel.findByIdAndUpdate(
+        id,
+        {
+          ...updateConversationHistoryDto,
+          updatedAt: new Date(),
+        },
+        { new: true },
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to update conversation history',
+        error,
+      );
+    }
   }
 
-  async remove(id: string): Promise<ConversationHistoryDocument> {
-    return await this.conversationHistoryModel.findByIdAndUpdate(
-      id,
-      {
-        deletedAt: new Date(),
-      },
-      { new: true },
-    );
+  async remove(
+    id: string,
+    requestedUser: string,
+  ): Promise<ConversationHistoryDocument> {
+    const history: PopulatedConversationHistoryDocument =
+      await this.findById(id);
+    if (!history) throw new NotFoundException('History not found');
+
+    const membership: ConversationMemberDocument =
+      await this.emitMembershipValidationEvent(
+        requestedUser,
+        history.conversation.id,
+      );
+    if (!membership) throw new UnauthorizedException('Unauthorized user');
+
+    try {
+      return await this.conversationHistoryModel.findByIdAndUpdate(
+        id,
+        {
+          deletedAt: new Date(),
+        },
+        { new: true },
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to remove conversation history',
+        error,
+      );
+    }
   }
 }

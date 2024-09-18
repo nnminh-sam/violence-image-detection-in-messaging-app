@@ -20,15 +20,10 @@ const DATABASE_CONNECTION_STRING = `mongodb://${envVar.DATABASE_HOST}:${envVar.D
 @Module({
   imports: [
     EventEmitterModule.forRoot({
-      // * the delimiter used to segment namespaces
       delimiter: '.',
-      // * set this to `true` if you want to emit the newListener event
       newListener: false,
-      // * set this to `true` if you want to emit the removeListener event
       removeListener: false,
-      // * the maximum amount of listeners that can be assigned to an event
       maxListeners: 10,
-      // * show event name in memory leak message when more than maximum amount of listeners is assigned
       verboseMemoryLeak: false,
     }),
     MongooseModule.forRoot(DATABASE_CONNECTION_STRING),

@@ -76,7 +76,7 @@ export class ConversationMemberService {
       .populate('user');
   }
 
-  async findByUserIdAndConversationId(
+  public async findByUserIdAndConversationId(
     userId: string,
     conversationId: string,
   ): Promise<ConversationMemberDocument> {
@@ -89,7 +89,10 @@ export class ConversationMemberService {
       .populate('user');
   }
 
-  async findConversationMembers(conversationId: string, requestedUser: string) {
+  async findConversationMembers(
+    conversationId: string,
+    requestedUser: string,
+  ): Promise<ConversationMemberDocument[]> {
     const conversation: ConversationDocument =
       await this.conversationService.findById(conversationId);
     if (!conversation) throw new NotFoundException('Conversation not found');
