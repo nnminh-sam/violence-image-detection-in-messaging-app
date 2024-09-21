@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   NotFoundException,
+  Query,
 } from '@nestjs/common';
 import { ConversationHistoryService } from './conversation-history.service';
 import { CreateConversationHistoryDto } from './dto/create-conversation-history.dto';
@@ -16,6 +17,7 @@ import { UpdateConversationHistoryDto } from './dto/update-conversation-history.
 
 import * as dotenv from 'dotenv';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
+import { PopulatedConversationHistoryDocument } from './entities/conversation-history.entity';
 dotenv.config();
 
 const envVar = process.env;
@@ -36,6 +38,23 @@ export class ConversationHistoryController {
     const user: any = request.user;
     return await this.conversationHistoryService.create(
       createConversationHistoryDto,
+      user.id,
+    );
+  }
+
+  @Get('conversation/:conversationId')
+  async findHistoryOfConversation(
+    @Req() request: any,
+    @Param('conversationId') conversationId: string,
+    @Query('page')
+    page: number,
+    @Query('size') size: number,
+  ): Promise<PopulatedConversationHistoryDocument[]> {
+    const user: any = request.user;
+    return await this.conversationHistoryService.findConversationHistory(
+      conversationId,
+      page,
+      size,
       user.id,
     );
   }

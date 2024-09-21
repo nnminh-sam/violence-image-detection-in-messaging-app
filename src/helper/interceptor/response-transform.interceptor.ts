@@ -25,7 +25,6 @@ export class ResponseTransformInterceptor implements NestInterceptor {
   ): Observable<any> | Promise<Observable<any>> {
     return next.handle().pipe(
       map((rawData) => {
-        console.log('raw data:', rawData);
         let returningData = null;
         let metadata = null;
 

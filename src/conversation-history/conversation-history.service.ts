@@ -11,7 +11,7 @@ import {
   ConversationHistoryDocument,
   PopulatedConversationHistoryDocument,
 } from './entities/conversation-history.entity';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { UserService } from 'src/user/user.service';
 import { ConversationService } from 'src/conversation/conversation.service';
@@ -19,7 +19,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConversationMemberEvent } from 'src/conversation-member/entities/conversation-member-event.enum';
 import { ConversationMemberDocument } from 'src/conversation-member/entities/conversation-member.entity';
 import { ConversationDocument } from 'src/conversation/entities/conversation.entity';
-import { UserDocument } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class ConversationHistoryService {
@@ -101,6 +100,47 @@ export class ConversationHistoryService {
       .populate('sendBy')
       .populate('conversation')
       .exec()) as PopulatedConversationHistoryDocument;
+  }
+
+  async findConversationHistory(
+    conversationId: string,
+    page: number,
+    size: number,
+    requestedUser: string,
+  ): Promise<PopulatedConversationHistoryDocument[]> {
+    const conversation: ConversationDocument =
+      await this.conversationService.findById(conversationId);
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
+    const membership: ConversationMemberDocument =
+      await this.emitMembershipValidationEvent(requestedUser, conversationId);
+    if (!membership) throw new UnauthorizedException('Unauthorized user');
+
+    const skip: number = (page - 1) * size;
+    const data: PopulatedConversationHistoryDocument[] =
+      (await this.conversationHistoryModel
+        .find({
+          conversation: conversationId,
+          deletedAt: null,
+        })
+        .populate({
+          path: 'conversation',
+          select: '-__v',
+        })
+        .populate({
+          path: 'sendBy',
+          select: '-__v, -password',
+        })
+        .limit(size)
+        .skip(skip)
+        .sort({
+          createdAt: -1,
+        })
+        .select('-__v')
+        .lean()
+        .exec()) as PopulatedConversationHistoryDocument[];
+
+    return data;
   }
 
   async update(

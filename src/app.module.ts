@@ -8,9 +8,9 @@ import { RelationshipModule } from './relationship/relationship.module';
 import { ConversationMemberModule } from './conversation-member/conversation-member.module';
 import { ConversationHistoryModule } from './conversation-history/conversation-history.module';
 import { AuthModule } from './auth/auth.module';
-
-import * as dotenv from 'dotenv';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import mongoose from 'mongoose';
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -37,4 +37,10 @@ const DATABASE_CONNECTION_STRING = `mongodb://${envVar.DATABASE_HOST}:${envVar.D
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  constructor() {
+    if (envVar.DATABASE_DEBUG_MODE === 'true') {
+      mongoose.set('debug', true);
+    }
+  }
+}

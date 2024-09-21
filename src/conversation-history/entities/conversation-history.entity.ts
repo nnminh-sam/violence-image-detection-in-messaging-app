@@ -6,7 +6,7 @@ import { UserDocument } from 'src/user/entities/user.entity';
 @Schema({ timestamps: true })
 export class ConversationHistory {
   @Prop({
-    type: MongooseSchema.Types.ObjectId,
+    type: String,
     ref: 'User',
     required: true,
     nullable: false,
@@ -14,7 +14,7 @@ export class ConversationHistory {
   sendBy: string;
 
   @Prop({
-    type: MongooseSchema.Types.ObjectId,
+    type: String,
     ref: 'Conversation',
     required: true,
     nullable: false,
