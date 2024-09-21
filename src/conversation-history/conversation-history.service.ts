@@ -129,7 +129,7 @@ export class ConversationHistoryService {
         })
         .populate({
           path: 'sendBy',
-          select: '-__v, -password',
+          select: '-__v -password',
         })
         .limit(size)
         .skip(skip)
