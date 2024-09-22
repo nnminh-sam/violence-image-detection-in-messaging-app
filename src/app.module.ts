@@ -7,7 +7,7 @@ import { ConversationMemberModule } from './conversation-member/conversation-mem
 import { ConversationHistoryModule } from './conversation-history/conversation-history.module';
 import { AuthModule } from './auth/auth.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { MessagingGateway } from './messaging/messaging.gateway';
+import { MessagingModule } from './messaging/messaging.module';
 import mongoose from 'mongoose';
 import * as dotenv from 'dotenv';
 
@@ -32,9 +32,9 @@ const DATABASE_CONNECTION_STRING = `mongodb://${envVar.DATABASE_HOST}:${envVar.D
     ConversationMemberModule,
     ConversationHistoryModule,
     AuthModule,
+    MessagingModule,
   ],
   controllers: [],
-  providers: [MessagingGateway],
 })
 export class AppModule {
   constructor() {

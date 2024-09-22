@@ -9,13 +9,14 @@ import {
   NotFoundException,
   UseGuards,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
-
-import * as dotenv from 'dotenv';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
+import * as dotenv from 'dotenv';
+import { MessagingService } from 'src/messaging/messaging.service';
 
 dotenv.config();
 
@@ -25,11 +26,29 @@ const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/conversations`;
 @UseGuards(JwtGuard)
 @Controller(API_URL)
 export class ConversationController {
-  constructor(private readonly conversationService: ConversationService) {}
+  constructor(
+    private readonly conversationService: ConversationService,
+    private readonly messagingService: MessagingService,
+  ) {}
 
   @Post()
   async create(@Body() createConversationDto: CreateConversationDto) {
     return await this.conversationService.create(createConversationDto);
+  }
+
+  @Get('join/:roomId')
+  async joinRoom(@Req() request: any, @Param('roomId') roomId: string) {
+    const user: any = request.user;
+    const result: boolean = await this.conversationService.joinRoom(
+      user.id,
+      roomId,
+    );
+    if (!result) {
+      throw new BadRequestException('Cannot join room');
+    }
+
+    // * This can be a redirect and return the first 10 or 20 messages to the client to load the messages
+    return 'Join room success';
   }
 
   @Get('/:id')
