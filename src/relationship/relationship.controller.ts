@@ -15,6 +15,7 @@ import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import { BlockUserDto } from './dto/block-user.dto';
 import { RequestedUser } from 'src/decorator/requested-user.decorator';
 import * as dotenv from 'dotenv';
+import { Relationship } from './entities/relationship.entity';
 dotenv.config();
 
 const envVar = process.env;
@@ -26,18 +27,28 @@ export class RelationshipController {
   constructor(private readonly relationshipService: RelationshipService) {}
 
   @Post()
-  async create(@Body() createRelationshipDto: CreateRelationshipDto) {
+  async create(
+    @Body() createRelationshipDto: CreateRelationshipDto,
+  ): Promise<Relationship> {
     return await this.relationshipService.create(createRelationshipDto);
   }
 
   @Get('/my')
-  async findRelationshipOf(@RequestedUser() user: any) {
+  async findRelationshipOf(
+    @RequestedUser() user: any,
+  ): Promise<Relationship[]> {
     return await this.relationshipService.findAllMyRelationship(user.id);
   }
 
   @Get(':id')
-  async findOne(@RequestedUser() user: any, @Param('id') id: string) {
-    const data = await this.relationshipService.findById(id, user.id);
+  async findOne(
+    @RequestedUser() user: any,
+    @Param('id') id: string,
+  ): Promise<Relationship> {
+    const data: Relationship = await this.relationshipService.findById(
+      id,
+      user.id,
+    );
     if (!data) throw new NotFoundException('Relationship not found');
     return data;
   }
@@ -46,7 +57,7 @@ export class RelationshipController {
   async blockUser(
     @RequestedUser() user: any,
     @Body() blockUserDto: BlockUserDto,
-  ) {
+  ): Promise<Relationship> {
     return await this.relationshipService.blockUser(user.id, blockUserDto);
   }
 
@@ -55,7 +66,7 @@ export class RelationshipController {
     @RequestedUser() user: any,
     @Param('id') id: string,
     @Body() updateRelationshipDto: UpdateRelationshipDto,
-  ) {
+  ): Promise<Relationship> {
     return await this.relationshipService.update(
       id,
       updateRelationshipDto,

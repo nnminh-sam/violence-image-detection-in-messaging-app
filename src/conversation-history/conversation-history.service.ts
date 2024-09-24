@@ -20,7 +20,7 @@ import { ConversationService } from 'src/conversation/conversation.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConversationMemberEvent } from 'src/conversation-member/entities/conversation-member-event.enum';
 import { ConversationMemberDocument } from 'src/conversation-member/entities/conversation-member.entity';
-import { ConversationDocument } from 'src/conversation/entities/conversation.entity';
+import { Conversation } from 'src/conversation/entities/conversation.entity';
 import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
@@ -63,10 +63,9 @@ export class ConversationHistoryService {
     );
     if (!sender) throw new NotFoundException('Sender not found');
 
-    const conversation: ConversationDocument =
-      await this.conversationService.findById(
-        createConversationHistoryDto.conversation,
-      );
+    const conversation: Conversation = await this.conversationService.findById(
+      createConversationHistoryDto.conversation,
+    );
     if (!conversation) throw new NotFoundException('Conversation not found');
 
     const membership: ConversationMemberDocument =
@@ -127,7 +126,7 @@ export class ConversationHistoryService {
     size: number,
     requestedUser: string,
   ): Promise<PopulatedConversationHistoryDocument[]> {
-    const conversation: ConversationDocument =
+    const conversation: Conversation =
       await this.conversationService.findById(conversationId);
     if (!conversation) throw new NotFoundException('Conversation not found');
 

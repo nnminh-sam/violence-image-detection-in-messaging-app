@@ -3,6 +3,8 @@ import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Conversation {
+  id: string;
+
   @Prop({ required: true, unique: true })
   name: string;
 

@@ -27,7 +27,7 @@ export class ConversationService {
 
   async create(
     createConversationDto: CreateConversationDto,
-  ): Promise<ConversationDocument> {
+  ): Promise<Conversation> {
     const creator: User = await this.userService.findById(
       createConversationDto.createdBy,
     );
@@ -38,18 +38,18 @@ export class ConversationService {
     );
     if (!host) throw new NotFoundException('Conversation host not found');
 
-    const existedName = await this.checkExistingName(
-      createConversationDto.name,
-    );
+    const existedName = await this.isNameExisted(createConversationDto.name);
     if (existedName)
       throw new BadRequestException("Conversation's name is taken");
 
     try {
-      return await new this.conversationModel({
+      const data: ConversationDocument = await new this.conversationModel({
         ...createConversationDto,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       }).save();
+      return {
+        id: data._id,
+        ...data,
+      };
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to create conversation',
@@ -58,7 +58,7 @@ export class ConversationService {
     }
   }
 
-  async checkExistingName(name: string): Promise<Boolean> {
+  async isNameExisted(name: string): Promise<Boolean> {
     const conversation: ConversationDocument =
       await this.conversationModel.findOne({
         name: name,
@@ -67,19 +67,27 @@ export class ConversationService {
     return conversation != null ? true : false;
   }
 
-  async findById(id: string): Promise<ConversationDocument> {
-    return await this.conversationModel
+  async findById(id: string): Promise<Conversation> {
+    const data: ConversationDocument = await this.conversationModel
       .findOne({
         _id: id,
         deletedAt: null,
       })
       .populate('createdBy')
-      .populate('host');
+      .populate('host')
+      .select('-__v -deletedAt')
+      .exec();
+    return {
+      id: data._id,
+      ...data,
+    };
   }
 
-  async isConversationHost(conversationId: string, userId: string) {
-    const conversation: ConversationDocument =
-      await this.findById(conversationId);
+  async isConversationHost(
+    conversationId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const conversation: Conversation = await this.findById(conversationId);
     return conversation.host === userId;
   }
 
@@ -87,24 +95,25 @@ export class ConversationService {
     id: string,
     updateConversationDto: UpdateConversationDto,
     requestedUser: string,
-  ): Promise<ConversationDocument> {
-    const conversation: ConversationDocument = await this.findById(id);
+  ): Promise<Conversation> {
+    const conversation: Conversation = await this.findById(id);
     if (!conversation) throw new NotFoundException('Conversation not found');
 
-    const isAuthorizedUser = await this.isConversationHost(id, requestedUser);
+    const isAuthorizedUser: boolean = await this.isConversationHost(
+      id,
+      requestedUser,
+    );
     if (!isAuthorizedUser) throw new UnauthorizedException('Unauthorized user');
 
     try {
-      return await this.conversationModel.findByIdAndUpdate(
-        id,
-        {
-          ...updateConversationDto,
-          updatedAt: new Date(),
-        },
-        {
-          new: true,
-        },
-      );
+      const data: ConversationDocument = await this.conversationModel
+        .findByIdAndUpdate(id, { ...updateConversationDto }, { new: true })
+        .select('-__v -deletedAt')
+        .exec();
+      return {
+        id: data._id,
+        ...data,
+      };
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to update conversation',
@@ -113,24 +122,26 @@ export class ConversationService {
     }
   }
 
-  async remove(
-    id: string,
-    requestedUser: string,
-  ): Promise<ConversationDocument> {
-    const conversation = await this.findById(id);
+  async remove(id: string, requestedUser: string): Promise<Conversation> {
+    const conversation: Conversation = await this.findById(id);
     if (!conversation) throw new NotFoundException('Conversation not found');
 
-    const isAuthorizedUser = await this.isConversationHost(id, requestedUser);
-    if (!isAuthorizedUser) {
-      throw new UnauthorizedException('Unauthorized user');
-    }
+    const isAuthorizedUser: boolean = await this.isConversationHost(
+      id,
+      requestedUser,
+    );
+    if (!isAuthorizedUser) throw new UnauthorizedException('Unauthorized user');
 
     try {
-      return await this.conversationModel.findByIdAndUpdate(
-        id,
-        { deletedAt: new Date() },
-        { new: true },
-      );
+      const data: ConversationDocument = await this.conversationModel
+        .findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true })
+        .select('-__v')
+        .exec();
+
+      return {
+        id: data._id,
+        ...data,
+      };
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to remove conversation',

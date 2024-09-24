@@ -16,7 +16,10 @@ import {
 import { UserService } from 'src/user/user.service';
 import { ConversationService } from 'src/conversation/conversation.service';
 import { ConversationMemberStatus } from './entities/conversation-member-status.enum';
-import { ConversationDocument } from 'src/conversation/entities/conversation.entity';
+import {
+  Conversation,
+  ConversationDocument,
+} from 'src/conversation/entities/conversation.entity';
 
 @Injectable()
 export class ConversationMemberService {
@@ -93,7 +96,7 @@ export class ConversationMemberService {
     conversationId: string,
     requestedUser: string,
   ): Promise<ConversationMemberDocument[]> {
-    const conversation: ConversationDocument =
+    const conversation: Conversation =
       await this.conversationService.findById(conversationId);
     if (!conversation) throw new NotFoundException('Conversation not found');
 

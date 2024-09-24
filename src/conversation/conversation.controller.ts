@@ -8,13 +8,14 @@ import {
   Delete,
   NotFoundException,
   UseGuards,
-  Req,
 } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import * as dotenv from 'dotenv';
+import { RequestedUser } from 'src/decorator/requested-user.decorator';
+import { Conversation } from './entities/conversation.entity';
 dotenv.config();
 
 const envVar = process.env;
@@ -26,25 +27,29 @@ export class ConversationController {
   constructor(private readonly conversationService: ConversationService) {}
 
   @Post()
-  async create(@Body() createConversationDto: CreateConversationDto) {
+  async create(
+    @Body() createConversationDto: CreateConversationDto,
+  ): Promise<Conversation> {
     return await this.conversationService.create(createConversationDto);
   }
 
   @Get('/:id')
-  async findOne(@Req() request: any, @Param('id') id: string) {
-    const user: any = request.user;
-    const conversation = await this.conversationService.findById(id);
+  async findOne(
+    @RequestedUser() user: any,
+    @Param('id') id: string,
+  ): Promise<Conversation> {
+    const conversation: Conversation =
+      await this.conversationService.findById(id);
     if (!conversation) throw new NotFoundException('Conversation not found');
     return conversation;
   }
 
   @Patch('/:id')
   async update(
-    @Req() request: any,
+    @RequestedUser() user: any,
     @Param('id') id: string,
     @Body() updateConversationDto: UpdateConversationDto,
-  ) {
-    const user: any = request.user;
+  ): Promise<Conversation> {
     return await this.conversationService.update(
       id,
       updateConversationDto,
@@ -53,8 +58,10 @@ export class ConversationController {
   }
 
   @Delete('/:id')
-  async remove(@Req() request: any, @Param('id') id: string) {
-    const user: any = request.user;
+  async remove(
+    @RequestedUser() user: any,
+    @Param('id') id: string,
+  ): Promise<Conversation> {
     return await this.conversationService.remove(id, user.id);
   }
 }

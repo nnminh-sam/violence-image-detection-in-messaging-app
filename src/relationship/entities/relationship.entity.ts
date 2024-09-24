@@ -4,6 +4,8 @@ import RelationshipStatus from './relationship.enum';
 
 @Schema({ timestamps: true })
 export class Relationship {
+  id: string;
+
   @Prop({ required: true })
   userA: string;
 
