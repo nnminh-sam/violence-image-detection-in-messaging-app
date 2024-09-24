@@ -9,21 +9,22 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { MessagingService } from './messaging.service';
-import * as dotenv from 'dotenv';
 import { JoinRoomDto } from './dto/join-room-payload.dto';
 import { ClientInfo } from './types/client-info';
 import { UseGuards } from '@nestjs/common';
 import { SocketGuard } from './guard/socket-jwt.guard';
 import { ServerToClientEvents } from './types/server-to-client-events';
 import { NewMessage } from './dto/new-message.dto';
+import * as dotenv from 'dotenv';
 dotenv.config();
 
-const WEBSOCKET_GATEWAY_PORT: number = +process.env.WEBSOCKET_PORT;
+const SOCKET_PORT: number = +process.env.SOCKET_PORT;
+const SOCKET_NAMESPACE: string = process.env.SOCKET_NAMESPACE;
 const ALLOWED_ORIGIN: string =
   process.env.MODE === 'dev' ? '*' : process.env.CLIENT;
 
-@WebSocketGateway(WEBSOCKET_GATEWAY_PORT, {
-  namespace: 'chat',
+@WebSocketGateway(SOCKET_PORT, {
+  // namespace: SOCKET_NAMESPACE,
   cors: {
     origin: ALLOWED_ORIGIN,
   },
@@ -32,7 +33,8 @@ export class MessagingGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  private readonly server: Server<any, ServerToClientEvents>;
+  // private readonly server: Server<any, ServerToClientEvents>;
+  private readonly server: Server;
 
   constructor(private readonly messagingService: MessagingService) {}
 
@@ -59,11 +61,8 @@ export class MessagingGateway
   }
 
   @UseGuards(SocketGuard)
-  @SubscribeMessage('saveMessage')
-  handleNewMessage(
-    @ConnectedSocket()
-    client: Socket,
-    @MessageBody()
-    payload: NewMessage,
-  ) {}
+  sendNewMessage(payload: NewMessage) {
+    const { room } = payload;
+    this.server.to(room).emit('newMessage', payload);
+  }
 }

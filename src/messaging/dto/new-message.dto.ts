@@ -1,9 +1,13 @@
-export class NewMessage {
-  id: string;
+import { UserResponse } from 'src/user/dto/user-response.dto';
 
+export class NewMessage {
   message: string;
 
-  attachment: string;
+  attachment?: string;
 
-  sender: string;
+  sender: UserResponse;
+
+  room: string;
+
+  timestamp: Date;
 }

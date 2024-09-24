@@ -1,6 +1,8 @@
+import { MessagingGateway } from './../messaging/messaging.gateway';
 import {
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -11,7 +13,7 @@ import {
   ConversationHistoryDocument,
   PopulatedConversationHistoryDocument,
 } from './entities/conversation-history.entity';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { UserService } from 'src/user/user.service';
 import { ConversationService } from 'src/conversation/conversation.service';
@@ -19,9 +21,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConversationMemberEvent } from 'src/conversation-member/entities/conversation-member-event.enum';
 import { ConversationMemberDocument } from 'src/conversation-member/entities/conversation-member.entity';
 import { ConversationDocument } from 'src/conversation/entities/conversation.entity';
+import { UserResponse } from 'src/user/dto/user-response.dto';
 
 @Injectable()
 export class ConversationHistoryService {
+  private readonly logger: Logger = new Logger(ConversationHistoryService.name);
+
   constructor(
     @InjectModel(ConversationHistory.name)
     private readonly conversationHistoryModel: Model<ConversationHistory>,
@@ -31,6 +36,8 @@ export class ConversationHistoryService {
     private readonly conversationService: ConversationService,
 
     private readonly eventEmitter: EventEmitter2,
+
+    private messagingGateway: MessagingGateway,
   ) {}
 
   private async emitMembershipValidationEvent(
@@ -51,14 +58,15 @@ export class ConversationHistoryService {
     if (createConversationHistoryDto.sendBy !== requestedUser)
       throw new UnauthorizedException('Unauthorized user');
 
-    const sender = await this.userService.findById(
+    const sender: UserResponse = await this.userService.findById(
       createConversationHistoryDto.sendBy,
     );
     if (!sender) throw new NotFoundException('Sender not found');
 
-    const conversation = await this.conversationService.findById(
-      createConversationHistoryDto.conversation,
-    );
+    const conversation: ConversationDocument =
+      await this.conversationService.findById(
+        createConversationHistoryDto.conversation,
+      );
     if (!conversation) throw new NotFoundException('Conversation not found');
 
     const membership: ConversationMemberDocument =
@@ -69,11 +77,22 @@ export class ConversationHistoryService {
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
     try {
-      return await new this.conversationHistoryModel({
+      const createdMessage = await new this.conversationHistoryModel({
         ...createConversationHistoryDto,
         createdAt: new Date(),
       }).save();
+
+      this.messagingGateway.sendNewMessage({
+        sender,
+        message: createConversationHistoryDto.message,
+        room: createConversationHistoryDto.conversation,
+        timestamp: new Date(),
+        attachment: createConversationHistoryDto.attachment,
+      });
+
+      return createdMessage;
     } catch (error) {
+      this.logger.error(error);
       throw new InternalServerErrorException(
         'Failed to create conversation history',
         error,

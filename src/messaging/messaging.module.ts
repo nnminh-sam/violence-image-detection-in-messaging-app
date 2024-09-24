@@ -3,7 +3,6 @@ import { MessagingGateway } from './messaging.gateway';
 import { MessagingService } from './messaging.service';
 import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from 'src/user/user.module';
-import { APP_FILTER } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -16,6 +15,6 @@ import { APP_FILTER } from '@nestjs/core';
     }),
   ],
   providers: [MessagingGateway, MessagingService],
-  exports: [MessagingService],
+  exports: [MessagingGateway],
 })
 export class MessagingModule {}

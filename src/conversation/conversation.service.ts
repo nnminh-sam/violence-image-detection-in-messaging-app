@@ -15,10 +15,6 @@ import {
 } from './entities/conversation.entity';
 import { UserService } from 'src/user/user.service';
 import { UserResponse } from 'src/user/dto/user-response.dto';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ConversationMemberEvent } from 'src/conversation-member/entities/conversation-member-event.enum';
-import { ConversationMemberDocument } from 'src/conversation-member/entities/conversation-member.entity';
-import { MessagingService } from 'src/messaging/messaging.service';
 
 @Injectable()
 export class ConversationService {
@@ -27,10 +23,6 @@ export class ConversationService {
     private conversationModel: Model<Conversation>,
 
     private readonly userService: UserService,
-
-    private readonly eventEmitter: EventEmitter2,
-
-    private readonly messagingService: MessagingService,
   ) {}
 
   async create(
@@ -64,29 +56,6 @@ export class ConversationService {
         error,
       );
     }
-  }
-
-  private async emitMembershipValidationEvent(
-    userId: string,
-    conversationId: string,
-  ): Promise<ConversationMemberDocument> {
-    const data = await this.eventEmitter.emitAsync(
-      ConversationMemberEvent.FIND_BY_USER_AND_CONVERSATION,
-      { userId, conversationId },
-    );
-    return data[0] as ConversationMemberDocument;
-  }
-
-  // TODO: handle join room event
-  async joinRoom(userId: string, roomId: string): Promise<boolean> {
-    const conversation: ConversationDocument = await this.findById(roomId);
-    if (!conversation) throw new NotFoundException('Conversation not found');
-
-    const membership: ConversationMemberDocument =
-      await this.emitMembershipValidationEvent(userId, roomId);
-    if (!membership) throw new UnauthorizedException('Unauthorized user');
-
-    return true;
   }
 
   async checkExistingName(name: string): Promise<Boolean> {

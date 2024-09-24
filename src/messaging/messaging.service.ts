@@ -33,6 +33,15 @@ export class MessagingService {
     }
   }
 
+  private leaveAllRoom(client: Socket) {
+    const clientPrivateRoom: string = client.id;
+    client.rooms.forEach((room) => {
+      if (room !== clientPrivateRoom) {
+        client.leave(room);
+      }
+    });
+  }
+
   async authorizeClient(client: Socket): Promise<ClientInfo> {
     const token: string = this.getAuthenticationToken(client);
     if (!token) {
@@ -81,16 +90,8 @@ export class MessagingService {
   }
 
   joinRoom(client: Socket, roomId: string) {
+    this.leaveAllRoom(client);
     client.join(roomId);
     this.logger.log(`Client ${client.id} joined room ${roomId}`);
-  }
-
-  leaveAllRoom(client: Socket) {
-    const clientPrivateRoom: string = client.id;
-    client.rooms.forEach((room) => {
-      if (room !== clientPrivateRoom) {
-        client.leave(room);
-      }
-    });
   }
 }

@@ -8,6 +8,7 @@ import {
 } from './entities/conversation-history.entity';
 import { ConversationModule } from 'src/conversation/conversation.module';
 import { UserModule } from 'src/user/user.module';
+import { MessagingModule } from 'src/messaging/messaging.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { UserModule } from 'src/user/user.module';
     ]),
     UserModule,
     ConversationModule,
+    MessagingModule,
   ],
   controllers: [ConversationHistoryController],
   providers: [ConversationHistoryService],

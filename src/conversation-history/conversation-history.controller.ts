@@ -14,10 +14,9 @@ import {
 import { ConversationHistoryService } from './conversation-history.service';
 import { CreateConversationHistoryDto } from './dto/create-conversation-history.dto';
 import { UpdateConversationHistoryDto } from './dto/update-conversation-history.dto';
-
-import * as dotenv from 'dotenv';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import { PopulatedConversationHistoryDocument } from './entities/conversation-history.entity';
+import * as dotenv from 'dotenv';
 dotenv.config();
 
 const envVar = process.env;
