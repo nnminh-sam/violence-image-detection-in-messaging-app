@@ -1,9 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
-import { ResponseTransformInterceptor } from './helper/interceptor/response-transform.interceptor';
+import { ResponseTransformInterceptor } from './interceptor/response-transform.interceptor';
 import { GlobalHttpExceptionFilter } from './helper/filter/global-exception.filter';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { ApiLoggingInterceptor } from './interceptor/api-logging.interceptor';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ async function bootstrap() {
     }),
   );
   app.useGlobalInterceptors(new ResponseTransformInterceptor());
+  app.useGlobalInterceptors(new ApiLoggingInterceptor());
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
   await app.listen(process.env.PORT);
 }

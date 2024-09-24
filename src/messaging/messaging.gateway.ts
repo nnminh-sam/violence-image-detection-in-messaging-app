@@ -13,18 +13,16 @@ import { JoinRoomDto } from './dto/join-room-payload.dto';
 import { ClientInfo } from './types/client-info';
 import { UseGuards } from '@nestjs/common';
 import { SocketGuard } from './guard/socket-jwt.guard';
-import { ServerToClientEvents } from './types/server-to-client-events';
 import { NewMessage } from './dto/new-message.dto';
+import { ServerToClientEvents } from './types/server-to-client-events';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
 const SOCKET_PORT: number = +process.env.SOCKET_PORT;
-const SOCKET_NAMESPACE: string = process.env.SOCKET_NAMESPACE;
 const ALLOWED_ORIGIN: string =
   process.env.MODE === 'dev' ? '*' : process.env.CLIENT;
 
 @WebSocketGateway(SOCKET_PORT, {
-  // namespace: SOCKET_NAMESPACE,
   cors: {
     origin: ALLOWED_ORIGIN,
   },
@@ -33,8 +31,7 @@ export class MessagingGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  // private readonly server: Server<any, ServerToClientEvents>;
-  private readonly server: Server;
+  private readonly server: Server<any, ServerToClientEvents>;
 
   constructor(private readonly messagingService: MessagingService) {}
 
