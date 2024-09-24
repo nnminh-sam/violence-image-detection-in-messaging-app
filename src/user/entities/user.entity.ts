@@ -2,8 +2,10 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Gender } from './gender.enum';
 import { Document } from 'mongoose';
 
-@Schema()
+@Schema({ timestamps: true })
 export class User {
+  id: string;
+
   @Prop({ required: true })
   firstName: string;
 
@@ -27,12 +29,6 @@ export class User {
 
   @Prop({ required: true })
   phone: string;
-
-  @Prop({ required: true, default: new Date() })
-  createdAt: Date;
-
-  @Prop({ required: true, default: new Date() })
-  updatedAt: Date;
 
   @Prop({ default: null })
   deletedAt: Date;

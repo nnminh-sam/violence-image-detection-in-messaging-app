@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema()
+@Schema({ timestamps: true })
 export class Conversation {
   @Prop({ required: true, unique: true })
   name: string;
@@ -14,12 +14,6 @@ export class Conversation {
 
   @Prop({ required: true })
   host: string;
-
-  @Prop({ required: true, default: new Date() })
-  createdAt: Date;
-
-  @Prop({ required: true, default: new Date() })
-  updatedAt: Date;
 
   @Prop({ default: null })
   deletedAt: Date;

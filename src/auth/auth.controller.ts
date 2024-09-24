@@ -1,9 +1,9 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { RequestedUser } from 'src/decorator/requested-user.decorator';
+import { RegistrationPayloadDto } from './dto/registration-payload.dto';
+import { LocalGuard } from './guards/local.guard';
 import { AuthService } from './auth.service';
 import * as dotenv from 'dotenv';
-import { LocalGuard } from './guards/local.guard';
-import { RegistrationPayloadDto } from './dto/registration-payload.dto';
-import { ValidationPipe } from '../helper/pipe/validation.pipe';
 
 dotenv.config();
 const envVar = process.env;
@@ -14,10 +14,10 @@ const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/auth`;
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Post('login')
   @UseGuards(LocalGuard)
-  async login(@Req() request) {
-    return await this.authService.login(request.user);
+  @Post('login')
+  async login(@RequestedUser() user) {
+    return await this.authService.login(user);
   }
 
   @Post('register')

@@ -5,18 +5,16 @@ import {
   Body,
   Patch,
   Param,
-  Req,
   UseGuards,
   NotFoundException,
 } from '@nestjs/common';
 import { RelationshipService } from './relationship.service';
 import { CreateRelationshipDto } from './dto/create-relationship.dto';
 import { UpdateRelationshipDto } from './dto/update-relationship.dto';
-
-import * as dotenv from 'dotenv';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import { BlockUserDto } from './dto/block-user.dto';
-
+import { RequestedUser } from 'src/decorator/requested-user.decorator';
+import * as dotenv from 'dotenv';
 dotenv.config();
 
 const envVar = process.env;
@@ -33,32 +31,31 @@ export class RelationshipController {
   }
 
   @Get('/my')
-  async findRelationshipOf(@Req() request: any) {
-    const user: any = request.user;
+  async findRelationshipOf(@RequestedUser() user: any) {
     return await this.relationshipService.findAllMyRelationship(user.id);
   }
 
   @Get(':id')
-  async findOne(@Req() request: any, @Param('id') id: string) {
-    const user: any = request.user;
+  async findOne(@RequestedUser() user: any, @Param('id') id: string) {
     const data = await this.relationshipService.findById(id, user.id);
     if (!data) throw new NotFoundException('Relationship not found');
     return data;
   }
 
   @Patch('block-user')
-  async blockUser(@Req() request: any, @Body() blockUserDto: BlockUserDto) {
-    const user: any = request.user;
+  async blockUser(
+    @RequestedUser() user: any,
+    @Body() blockUserDto: BlockUserDto,
+  ) {
     return await this.relationshipService.blockUser(user.id, blockUserDto);
   }
 
   @Patch(':id')
   async update(
-    @Req() request: any,
+    @RequestedUser() user: any,
     @Param('id') id: string,
     @Body() updateRelationshipDto: UpdateRelationshipDto,
   ) {
-    const user: any = request.user;
     return await this.relationshipService.update(
       id,
       updateRelationshipDto,

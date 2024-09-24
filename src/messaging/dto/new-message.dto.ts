@@ -1,11 +1,11 @@
-import { UserResponse } from 'src/user/dto/user-response.dto';
+import { User } from 'src/user/entities/user.entity';
 
 export class NewMessage {
   message: string;
 
   attachment?: string;
 
-  sender: UserResponse;
+  sender: User;
 
   room: string;
 

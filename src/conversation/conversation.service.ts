@@ -14,7 +14,7 @@ import {
   ConversationDocument,
 } from './entities/conversation.entity';
 import { UserService } from 'src/user/user.service';
-import { UserResponse } from 'src/user/dto/user-response.dto';
+import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class ConversationService {
@@ -28,12 +28,12 @@ export class ConversationService {
   async create(
     createConversationDto: CreateConversationDto,
   ): Promise<ConversationDocument> {
-    const creator: UserResponse = await this.userService.findById(
+    const creator: User = await this.userService.findById(
       createConversationDto.createdBy,
     );
     if (!creator) throw new NotFoundException('Conversation creator not found');
 
-    const host: UserResponse = await this.userService.findById(
+    const host: User = await this.userService.findById(
       createConversationDto.host,
     );
     if (!host) throw new NotFoundException('Conversation host not found');

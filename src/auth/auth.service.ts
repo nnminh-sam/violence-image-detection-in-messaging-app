@@ -1,15 +1,15 @@
 import {
   BadRequestException,
   Injectable,
-  UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { AuthenticationPayloadDto } from './dto/authentication-payload.dto';
 import { UserService } from 'src/user/user.service';
-import { UserDocument } from 'src/user/entities/user.entity';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import { User, UserDocument } from 'src/user/entities/user.entity';
 import { RegistrationPayloadDto } from './dto/registration-payload.dto';
 import { AuthenticationResponseDto } from './dto/authentication-response.dto';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -21,23 +21,23 @@ export class AuthService {
   async validateUser({
     email,
     password,
-  }: AuthenticationPayloadDto): Promise<UserDocument> {
+  }: AuthenticationPayloadDto): Promise<User> {
     const user: UserDocument = await this.userService.findByEmail(email);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
+    if (!user) throw new NotFoundException('User not found');
+
     const isPasswordMatch: boolean = bcrypt.compareSync(
       password,
       user.password,
     );
-    if (!isPasswordMatch) {
-      throw new UnauthorizedException('Wrong password');
-    }
+    if (!isPasswordMatch) throw new BadRequestException('Wrong password');
 
-    return user;
+    return {
+      id: user._id,
+      ...user,
+    };
   }
 
-  async login(user: UserDocument): Promise<AuthenticationResponseDto> {
+  async login(user: any): Promise<AuthenticationResponseDto> {
     const payload = { email: user.email, id: user.id };
     return {
       accessToken: this.jwtService.sign(payload),

@@ -21,7 +21,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConversationMemberEvent } from 'src/conversation-member/entities/conversation-member-event.enum';
 import { ConversationMemberDocument } from 'src/conversation-member/entities/conversation-member.entity';
 import { ConversationDocument } from 'src/conversation/entities/conversation.entity';
-import { UserResponse } from 'src/user/dto/user-response.dto';
+import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class ConversationHistoryService {
@@ -58,7 +58,7 @@ export class ConversationHistoryService {
     if (createConversationHistoryDto.sendBy !== requestedUser)
       throw new UnauthorizedException('Unauthorized user');
 
-    const sender: UserResponse = await this.userService.findById(
+    const sender: User = await this.userService.findById(
       createConversationHistoryDto.sendBy,
     );
     if (!sender) throw new NotFoundException('Sender not found');

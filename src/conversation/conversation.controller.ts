@@ -9,14 +9,12 @@ import {
   NotFoundException,
   UseGuards,
   Req,
-  BadRequestException,
 } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import * as dotenv from 'dotenv';
-
 dotenv.config();
 
 const envVar = process.env;

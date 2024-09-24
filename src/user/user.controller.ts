@@ -3,7 +3,6 @@ import {
   Get,
   Body,
   Patch,
-  Param,
   Delete,
   UseGuards,
   Req,
@@ -12,11 +11,11 @@ import {
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
-
+import { RequestedUser } from 'src/decorator/requested-user.decorator';
+import { User } from './entities/user.entity';
 import * as dotenv from 'dotenv';
-import { UserResponse } from './dto/user-response.dto';
-
 dotenv.config();
+
 const envVar = process.env;
 const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/users`;
 
@@ -26,13 +25,10 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get('/my')
-  async findOne(@Req() request: any) {
-    const user: UserResponse = await this.userService.findById(request.user.id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user;
+  async findOne(@RequestedUser() user: any) {
+    const response: User = await this.userService.findById(user.id);
+    if (!response) throw new NotFoundException('User not found');
+    return response;
   }
 
   @Patch()

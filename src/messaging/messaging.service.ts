@@ -2,8 +2,8 @@ import { UserService } from 'src/user/user.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { Socket } from 'socket.io';
 import { JwtService, TokenExpiredError } from '@nestjs/jwt';
-import { UserResponse } from 'src/user/dto/user-response.dto';
 import { ClientInfo } from './types/client-info';
+import { User } from 'src/user/entities/user.entity';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -57,7 +57,7 @@ export class MessagingService {
       return null;
     }
 
-    const user: UserResponse = await this.userService.findById(claims.id);
+    const user: User = await this.userService.findById(claims.id);
     if (!user) {
       this.logger.log(`User ${user.email} at client [${client.id}] not found`);
       client.disconnect();

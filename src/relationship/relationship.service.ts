@@ -14,9 +14,9 @@ import {
 } from './entities/relationship.entity';
 import { Model } from 'mongoose';
 import { UserService } from 'src/user/user.service';
-import { UserResponse } from 'src/user/dto/user-response.dto';
 import { BlockUserDto } from './dto/block-user.dto';
 import RelationshipStatus from './entities/relationship.enum';
+import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class RelationshipService {
@@ -30,18 +30,17 @@ export class RelationshipService {
   async create(
     createRelationshipDto: CreateRelationshipDto,
   ): Promise<RelationshipDocument> {
-    if (createRelationshipDto.userA === createRelationshipDto.userB) {
+    if (createRelationshipDto.userA === createRelationshipDto.userB)
       throw new BadRequestException(
         'First user and Second user must be different',
       );
-    }
 
-    const userA: UserResponse = await this.userService.findById(
+    const userA: User = await this.userService.findById(
       createRelationshipDto.userA,
     );
     if (!userA) throw new BadRequestException('User A not found');
 
-    const userB: UserResponse = await this.userService.findById(
+    const userB: User = await this.userService.findById(
       createRelationshipDto.userB,
     );
     if (!userB) throw new BadRequestException('User B not found');
@@ -143,14 +142,14 @@ export class RelationshipService {
     requestedUser: string,
     blockUserDto: BlockUserDto,
   ): Promise<RelationshipDocument> {
-    const blockBy: UserResponse = await this.userService.findById(
+    const blockBy: User = await this.userService.findById(
       blockUserDto.blockedBy,
     );
     if (!blockBy) throw new NotFoundException('Block by user not found');
     if (blockUserDto.blockedBy !== requestedUser)
       throw new UnauthorizedException('Unauthorized user');
 
-    const targetUser: UserResponse = await this.userService.findById(
+    const targetUser: User = await this.userService.findById(
       blockUserDto.targetUser,
     );
     if (!targetUser) throw new NotFoundException('Target user not found');
