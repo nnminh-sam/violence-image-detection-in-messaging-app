@@ -1,23 +1,15 @@
 import { UserService } from 'src/user/user.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { Socket } from 'socket.io';
-import * as dotenv from 'dotenv';
 import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { UserResponse } from 'src/user/dto/user-response.dto';
-import { ClientInfo } from './dto/client-info.dto';
-
+import { ClientInfo } from './types/client-info';
+import * as dotenv from 'dotenv';
 dotenv.config();
 
 @Injectable()
 export class MessagingService {
   private readonly logger = new Logger(MessagingService.name);
-
-  private clients: Map<Socket, ClientInfo> = new Map<Socket, ClientInfo>();
-
-  private roomAttendants: Map<string, Set<ClientInfo>> = new Map<
-    string,
-    Set<ClientInfo>
-  >();
 
   constructor(
     private readonly jwtService: JwtService,
@@ -77,9 +69,6 @@ export class MessagingService {
     const connectedClient: ClientInfo = await this.authorizeClient(client);
     if (!connectedClient) return;
 
-    if (this.clients.has(client)) return connectedClient;
-    this.clients.set(client, connectedClient);
-
     this.logger.log(
       `User ${connectedClient.email} at client [${client.id}] is connected`,
     );
@@ -87,20 +76,21 @@ export class MessagingService {
   }
 
   disconnectToSocket(client: Socket): void {
-    this.clients.delete(client);
     client.disconnect();
     this.logger.log(`Client [${client.id}] disconnected`);
   }
 
-  async joinRoom(client: Socket, roomId: string) {
-    const connectedClient: ClientInfo = this.clients.get(client);
-    const attendants: Set<ClientInfo> = this.roomAttendants.get(roomId);
-    if (attendants.has(connectedClient)) {
-      this.logger.log(`Client ${client.id} already in room ${roomId}`);
-    }
-    attendants.add(connectedClient);
-    this.roomAttendants[roomId] = attendants;
+  joinRoom(client: Socket, roomId: string) {
     client.join(roomId);
     this.logger.log(`Client ${client.id} joined room ${roomId}`);
+  }
+
+  leaveAllRoom(client: Socket) {
+    const clientPrivateRoom: string = client.id;
+    client.rooms.forEach((room) => {
+      if (room !== clientPrivateRoom) {
+        client.leave(room);
+      }
+    });
   }
 }
