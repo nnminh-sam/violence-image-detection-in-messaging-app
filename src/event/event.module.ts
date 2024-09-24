@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { MessagingGateway } from './messaging.gateway';
-import { MessagingService } from './messaging.service';
+import { EventGateway } from './event.gateway';
+import { EventService } from './event.service';
 import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from 'src/user/user.module';
 
@@ -14,7 +14,7 @@ import { UserModule } from 'src/user/user.module';
       },
     }),
   ],
-  providers: [MessagingGateway, MessagingService],
-  exports: [MessagingGateway],
+  providers: [EventGateway, EventService],
+  exports: [EventGateway],
 })
-export class MessagingModule {}
+export class EventModule {}

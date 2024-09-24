@@ -1,6 +1,6 @@
 import { IsMongoId, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class CreateConversationHistoryDto {
+export class CreateMessageDto {
   @IsNotEmpty()
   @IsMongoId()
   sendBy: string;

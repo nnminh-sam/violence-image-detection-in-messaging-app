@@ -3,11 +3,11 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './user/user.module';
 import { ConversationModule } from './conversation/conversation.module';
 import { RelationshipModule } from './relationship/relationship.module';
-import { ConversationMemberModule } from './conversation-member/conversation-member.module';
-import { ConversationHistoryModule } from './conversation-history/conversation-history.module';
+import { MembershipModule } from './membership/membership.module';
+import { MessageModule } from './message/message.module';
 import { AuthModule } from './auth/auth.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { MessagingModule } from './messaging/messaging.module';
+import { EventModule } from './event/event.module';
 import mongoose from 'mongoose';
 import * as dotenv from 'dotenv';
 
@@ -29,10 +29,10 @@ const DATABASE_CONNECTION_STRING = `mongodb://${envVar.DATABASE_HOST}:${envVar.D
     UserModule,
     ConversationModule,
     RelationshipModule,
-    ConversationMemberModule,
-    ConversationHistoryModule,
+    MembershipModule,
+    MessageModule,
     AuthModule,
-    MessagingModule,
+    EventModule,
   ],
   controllers: [],
 })

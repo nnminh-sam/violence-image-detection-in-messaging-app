@@ -1,6 +1,6 @@
 import { IsOptional, IsString } from 'class-validator';
 
-export class UpdateConversationHistoryDto {
+export class UpdateMessageDto {
   @IsOptional()
   @IsString()
   message: string;

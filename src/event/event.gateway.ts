@@ -8,7 +8,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { MessagingService } from './messaging.service';
+import { EventService } from './event.service';
 import { JoinRoomDto } from './dto/join-room-payload.dto';
 import { ClientInfo } from './types/client-info';
 import { UseGuards } from '@nestjs/common';
@@ -27,22 +27,20 @@ const ALLOWED_ORIGIN: string =
     origin: ALLOWED_ORIGIN,
   },
 })
-export class MessagingGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   private readonly server: Server<any, ServerToClientEvents>;
 
-  constructor(private readonly messagingService: MessagingService) {}
+  constructor(private readonly EventService: EventService) {}
 
   async handleConnection(client: Socket, ...args: any[]) {
     const connectedClient: ClientInfo =
-      await this.messagingService.connectToSocket(client);
+      await this.EventService.connectToSocket(client);
     if (!connectedClient) return;
   }
 
   async handleDisconnect(client: Socket) {
-    this.messagingService.disconnectToSocket(client);
+    this.EventService.disconnectToSocket(client);
   }
 
   @UseGuards(SocketGuard)
@@ -54,7 +52,7 @@ export class MessagingGateway
     payload: JoinRoomDto,
   ) {
     const { roomId } = payload;
-    this.messagingService.joinRoom(client, roomId);
+    this.EventService.joinRoom(client, roomId);
   }
 
   @UseGuards(SocketGuard)

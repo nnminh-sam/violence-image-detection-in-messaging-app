@@ -1,4 +1,4 @@
-export enum ConversationMemberRole {
+export enum MembershipRole {
   HOST = 'HOST',
   MEMBER = 'MEMBER',
 }

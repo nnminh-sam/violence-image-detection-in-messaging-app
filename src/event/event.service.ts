@@ -8,8 +8,8 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 @Injectable()
-export class MessagingService {
-  private readonly logger = new Logger(MessagingService.name);
+export class EventService {
+  private readonly logger = new Logger(EventService.name);
 
   constructor(
     private readonly jwtService: JwtService,
