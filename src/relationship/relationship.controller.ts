@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { RelationshipService } from './relationship.service';
 import { CreateRelationshipDto } from './dto/create-relationship.dto';
@@ -35,8 +36,18 @@ export class RelationshipController {
   @Get('/my')
   async findRelationshipOf(
     @RequestedUser() user: any,
-  ): Promise<PopulatedRelationship[]> {
-    return await this.relationshipService.findAllMyRelationship(user.id);
+    @Query('page') page: number,
+    @Query('size') size: number,
+    @Query('sortBy') sortBy: string,
+    @Query('orderBy') orderBy: string,
+  ) {
+    return await this.relationshipService.findAll(
+      user.id,
+      page || 1,
+      size || 10,
+      sortBy || 'createdAt',
+      orderBy || 'desc',
+    );
   }
 
   @Get(':id')

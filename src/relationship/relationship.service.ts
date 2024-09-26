@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -22,6 +23,8 @@ import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transo
 
 @Injectable()
 export class RelationshipService {
+  private logger: Logger = new Logger(RelationshipService.name);
+
   constructor(
     @InjectModel(Relationship.name)
     private relationshipModel: Model<Relationship>,
@@ -62,6 +65,7 @@ export class RelationshipService {
 
       return await this.findById(data._id.toString());
     } catch (error) {
+      this.logger.error(error);
       throw new InternalServerErrorException(
         'Failed to create relationship',
         error,
@@ -128,10 +132,15 @@ export class RelationshipService {
       .exec()) as Relationship;
   }
 
-  async findAllMyRelationship(
+  async findAll(
     userId: string,
-  ): Promise<PopulatedRelationship[]> {
-    return (await this.relationshipModel
+    page: number,
+    size: number,
+    sortBy: string,
+    orderBy: string,
+  ) {
+    const skipValue: number = (page - 1) * size;
+    const data: PopulatedRelationship[] = (await this.relationshipModel
       .find({
         $or: [{ userA: userId }, { userB: userId }],
         deletedAt: null,
@@ -147,9 +156,27 @@ export class RelationshipService {
         transform: MongooseDocumentTransformer,
       })
       .select('-__v -deletedAt')
+      .limit(size)
+      .skip(skipValue)
+      .sort({
+        [sortBy]: orderBy.toLowerCase() === 'asc' ? 1 : -1,
+      })
       .lean()
-      .transform(MongooseDocumentTransformer)
+      .transform((doc: any) => {
+        return doc.map(MongooseDocumentTransformer);
+      })
       .exec()) as PopulatedRelationship[];
+
+    return {
+      data,
+      metadata: {
+        pagination: {
+          page: page,
+          size: size,
+        },
+        count: data.length,
+      },
+    };
   }
 
   async update(

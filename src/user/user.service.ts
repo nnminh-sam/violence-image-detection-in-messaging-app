@@ -50,6 +50,7 @@ export class UserService {
       .findOne({ _id: id, deletedAt: null })
       .select('-password -__v -deletedAt')
       .transform(MongooseDocumentTransformer)
+      .lean()
       .exec()) as User;
   }
 

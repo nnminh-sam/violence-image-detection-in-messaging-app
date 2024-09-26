@@ -1,22 +1,6 @@
 import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
 import { map, Observable } from 'rxjs';
 
-function extractDataFromRawData(rawData) {
-  const { metadata, _doc, ...data } = rawData;
-  let result = data;
-  if (_doc != undefined) {
-    const { _id, __v, ...rest } = _doc;
-    result = {
-      id: _id,
-      ...rest,
-    };
-  }
-  return {
-    data: result,
-    metadata,
-  };
-}
-
 export class ResponseTransformInterceptor implements NestInterceptor {
   intercept(
     context: ExecutionContext,
@@ -24,23 +8,15 @@ export class ResponseTransformInterceptor implements NestInterceptor {
   ): Observable<any> | Promise<Observable<any>> {
     return next.handle().pipe(
       map((rawData) => {
-        let returningData = null;
-        let metadata = null;
+        let { data, metadata, ...rest } = rawData;
 
-        if (Array.isArray(rawData)) {
-          returningData = [];
-          rawData.map((d) => {
-            const { data, metadata } = extractDataFromRawData(d);
-            returningData.push(data);
-          });
-        } else {
-          const result = extractDataFromRawData(rawData);
-          returningData = result.data;
-          metadata = result.metadata;
+        if (!data && !metadata) {
+          data = rest;
+          metadata = undefined;
         }
 
         return {
-          data: returningData,
+          data,
           metadata,
           timestamp: new Date().toISOString(),
         };
