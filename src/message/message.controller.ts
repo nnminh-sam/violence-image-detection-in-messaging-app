@@ -14,12 +14,12 @@ import { MessageService } from './message.service';
 import { CreateMessageDto } from './dto/create-conversation-history.dto';
 import { UpdateMessageDto } from './dto/update-conversation-history.dto';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
-import * as dotenv from 'dotenv';
 import { RequestedUser } from 'src/decorator/requested-user.decorator';
+import * as dotenv from 'dotenv';
 dotenv.config();
 
 const envVar = process.env;
-const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/conversation-histories`;
+const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/messages`;
 
 @UseGuards(JwtGuard)
 @Controller(API_URL)
@@ -42,7 +42,7 @@ export class MessageController {
     page: number,
     @Query('size') size: number,
   ) {
-    return await this.MessageService.findMessage(
+    return await this.MessageService.findAll(
       conversationId,
       page,
       size,

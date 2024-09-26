@@ -9,12 +9,20 @@ import { CreateMembershipDto } from './dto/create-membership.dto';
 import { UpdateMembershipDto } from './dto/update-membership.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Membership, MembershipDocument } from './entities/membership.entity';
+import {
+  Membership,
+  MembershipDocument,
+  PopulatedMembership,
+} from './entities/membership.entity';
 import { UserService } from 'src/user/user.service';
 import { ConversationService } from 'src/conversation/conversation.service';
 import { MembershipStatus } from './entities/membership-status.enum';
-import { Conversation } from 'src/conversation/entities/conversation.entity';
+import {
+  Conversation,
+  PopulatedConversation,
+} from 'src/conversation/entities/conversation.entity';
 import { User } from 'src/user/entities/user.entity';
+import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transofrmer';
 
 @Injectable()
 export class MembershipService {
@@ -30,25 +38,25 @@ export class MembershipService {
   async create(
     hostId: string,
     createMembershipDto: CreateMembershipDto,
-  ): Promise<Membership> {
+  ): Promise<PopulatedMembership> {
     const user: User = await this.userService.findById(
       createMembershipDto.user,
     );
     if (!user) throw new NotFoundException('User not found');
 
-    const conversation: Conversation = await this.conversationService.findById(
-      createMembershipDto.conversation,
-    );
+    const conversation: PopulatedConversation =
+      await this.conversationService.findById(createMembershipDto.conversation);
     if (!conversation) throw new NotFoundException('Conversation not found');
-    if (conversation.host !== hostId)
+    if ((conversation.host as User).id !== hostId)
       throw new UnauthorizedException(
         'Request user must be the host of this conversation',
       );
 
-    const membership: Membership = await this.findByUserIdAndConversationId(
-      createMembershipDto.user,
-      createMembershipDto.conversation,
-    );
+    const membership: PopulatedMembership =
+      await this.findByUserIdAndConversationId(
+        createMembershipDto.user,
+        createMembershipDto.conversation,
+      );
     if (membership)
       throw new BadRequestException('Conversation membership existed');
 
@@ -58,10 +66,7 @@ export class MembershipService {
         status: MembershipStatus.PARTICIPATING,
       }).save();
 
-      return {
-        id: data._id,
-        ...data,
-      };
+      return await this.findById(data._id.toString());
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to create conversation member',
@@ -70,80 +75,94 @@ export class MembershipService {
     }
   }
 
-  async findById(id: string): Promise<Membership> {
-    const data: MembershipDocument = await this.MembershipModel.findOne({
+  async findById(id: string): Promise<PopulatedMembership> {
+    return (await this.MembershipModel.findOne({
       _id: id,
     })
-      // .populate('conversation')
-      // .populate('user')
+      .populate({
+        path: 'conversation',
+        select: '-__v -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'user',
+        select: '-__v -deletedAt -password',
+        transform: MongooseDocumentTransformer,
+      })
       .select('-__v -deletedAt')
-      .exec();
-
-    return {
-      id: data._id,
-      ...data,
-    };
+      .transform(MongooseDocumentTransformer)
+      .exec()) as PopulatedMembership;
   }
 
   public async findByUserIdAndConversationId(
     userId: string,
     conversationId: string,
-  ): Promise<Membership> {
-    const data: MembershipDocument = await this.MembershipModel.findOne({
+  ): Promise<PopulatedMembership> {
+    return (await this.MembershipModel.findOne({
       user: userId,
       conversation: conversationId,
     })
-      // .populate('conversation')
-      // .populate('user')
+      .populate({
+        path: 'conversation',
+        select: '-__v -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'user',
+        select: '-__v -deletedAt -password',
+        transform: MongooseDocumentTransformer,
+      })
       .select('-__v -deletedAt')
-      .exec();
-    return {
-      id: data._id,
-      ...data,
-    };
+      .transform(MongooseDocumentTransformer)
+      .exec()) as PopulatedMembership;
   }
 
   async findMemberships(
     conversationId: string,
     requestedUser: string,
-  ): Promise<Membership[]> {
-    const conversation: Conversation =
+  ): Promise<PopulatedMembership[]> {
+    const conversation: PopulatedConversation =
       await this.conversationService.findById(conversationId);
     if (!conversation) throw new NotFoundException('Conversation not found');
 
-    const membership: Membership = await this.findByUserIdAndConversationId(
-      requestedUser,
-      conversationId,
-    );
+    const membership: PopulatedMembership =
+      await this.findByUserIdAndConversationId(requestedUser, conversationId);
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
-    const rawData: MembershipDocument[] = await this.MembershipModel.find({
+    return (await this.MembershipModel.find({
       conversation: conversationId,
       status: MembershipStatus.PARTICIPATING,
     })
+      .populate({
+        path: 'conversation',
+        select: '-__v -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'user',
+        select: '-__v -deletedAt -password',
+        transform: MongooseDocumentTransformer,
+      })
       .select('-__v -deletedAt')
-      .exec();
-    return rawData.map((data: MembershipDocument) => {
-      return {
-        id: data._id,
-        ...data,
-      };
-    });
+      .transform(MongooseDocumentTransformer)
+      .exec()) as PopulatedMembership[];
   }
 
   async update(
     id: string,
     hostId: string,
     updateMembershipDto: UpdateMembershipDto,
-  ): Promise<Membership> {
-    const membership: Membership = await this.findById(id);
+  ): Promise<PopulatedMembership> {
+    const membership: PopulatedMembership = await this.findById(id);
     if (!membership)
       throw new NotFoundException('Conversation membership not found');
-    const conversation: Conversation = await this.conversationService.findById(
-      membership.conversation,
-    );
+
+    const conversation: PopulatedConversation =
+      await this.conversationService.findById(
+        (membership.conversation as Conversation).id,
+      );
     if (!conversation) throw new NotFoundException('Conversation not found');
-    if (conversation.host !== hostId)
+    if ((conversation.host as User).id !== hostId)
       throw new UnauthorizedException(
         'User must be the host of this conversation',
       );
@@ -154,13 +173,8 @@ export class MembershipService {
           id,
           { ...updateMembershipDto },
           { new: true },
-        )
-          .select('-__v -deletedAt')
-          .exec();
-      return {
-        id: data._id,
-        ...data,
-      };
+        ).exec();
+      return await this.findById(data._id.toString());
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to update conversation membership',
@@ -169,15 +183,17 @@ export class MembershipService {
     }
   }
 
-  async remove(id: string, hostId: string): Promise<Membership> {
-    const membership: Membership = await this.findById(id);
+  async remove(id: string, hostId: string): Promise<PopulatedMembership> {
+    const membership: PopulatedMembership = await this.findById(id);
     if (!membership)
       throw new NotFoundException('Conversation membership not found');
-    const conversation: Conversation = await this.conversationService.findById(
-      membership.conversation,
-    );
+
+    const conversation: PopulatedConversation =
+      await this.conversationService.findById(
+        (membership.conversation as Conversation).id,
+      );
     if (!conversation) throw new NotFoundException('Conversation not found');
-    if (conversation.host !== hostId)
+    if ((conversation.host as User).id !== hostId)
       throw new UnauthorizedException(
         'User must be the host of this conversation',
       );
@@ -188,12 +204,10 @@ export class MembershipService {
           id,
           { status: MembershipStatus.REMOVED },
           { new: true },
-        )
-          .select('-__v -deletedAt')
-          .exec();
+        ).exec();
       return {
-        id: data._id,
-        ...data,
+        ...membership,
+        status: MembershipStatus.REMOVED,
       };
     } catch (error) {
       throw new InternalServerErrorException(

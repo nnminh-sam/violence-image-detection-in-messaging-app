@@ -1,15 +1,24 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import RelationshipStatus from './relationship.enum';
+import { User } from 'src/user/entities/user.entity';
 
 @Schema({ timestamps: true })
 export class Relationship {
   id: string;
 
-  @Prop({ required: true })
+  @Prop({
+    type: 'String',
+    ref: User.name,
+    required: true,
+  })
   userA: string;
 
-  @Prop({ required: true })
+  @Prop({
+    type: 'String',
+    ref: User.name,
+    required: true,
+  })
   userB: string;
 
   @Prop({ required: true, enum: RelationshipStatus })
@@ -20,6 +29,13 @@ export class Relationship {
 }
 
 export type RelationshipDocument = Relationship & Document;
+
+export type PopulatedRelationship =
+  | Relationship
+  | {
+      userA: User;
+      userB: User;
+    };
 
 export const RelationshipSchema = SchemaFactory.createForClass(
   Relationship,

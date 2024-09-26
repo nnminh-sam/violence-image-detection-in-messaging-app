@@ -15,7 +15,7 @@ import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import * as dotenv from 'dotenv';
 import { RequestedUser } from 'src/decorator/requested-user.decorator';
-import { Conversation } from './entities/conversation.entity';
+import { PopulatedConversation } from './entities/conversation.entity';
 dotenv.config();
 
 const envVar = process.env;
@@ -29,7 +29,7 @@ export class ConversationController {
   @Post()
   async create(
     @Body() createConversationDto: CreateConversationDto,
-  ): Promise<Conversation> {
+  ): Promise<PopulatedConversation> {
     return await this.conversationService.create(createConversationDto);
   }
 
@@ -37,8 +37,8 @@ export class ConversationController {
   async findOne(
     @RequestedUser() user: any,
     @Param('id') id: string,
-  ): Promise<Conversation> {
-    const conversation: Conversation =
+  ): Promise<PopulatedConversation> {
+    const conversation: PopulatedConversation =
       await this.conversationService.findById(id);
     if (!conversation) throw new NotFoundException('Conversation not found');
     return conversation;
@@ -49,7 +49,7 @@ export class ConversationController {
     @RequestedUser() user: any,
     @Param('id') id: string,
     @Body() updateConversationDto: UpdateConversationDto,
-  ): Promise<Conversation> {
+  ): Promise<PopulatedConversation> {
     return await this.conversationService.update(
       id,
       updateConversationDto,
@@ -61,7 +61,7 @@ export class ConversationController {
   async remove(
     @RequestedUser() user: any,
     @Param('id') id: string,
-  ): Promise<Conversation> {
+  ): Promise<PopulatedConversation> {
     return await this.conversationService.remove(id, user.id);
   }
 }

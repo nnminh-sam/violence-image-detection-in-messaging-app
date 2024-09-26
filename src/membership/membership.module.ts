@@ -13,7 +13,7 @@ import { MembershipValidationListener } from './listener/membership-validation.l
       {
         name: Membership.name,
         schema: MembershipSchema,
-        collection: 'conversation_members',
+        collection: 'memberships',
       },
     ]),
     UserModule,

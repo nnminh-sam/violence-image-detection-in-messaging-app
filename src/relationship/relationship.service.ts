@@ -9,6 +9,7 @@ import { CreateRelationshipDto } from './dto/create-relationship.dto';
 import { UpdateRelationshipDto } from './dto/update-relationship.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import {
+  PopulatedRelationship,
   Relationship,
   RelationshipDocument,
 } from './entities/relationship.entity';
@@ -17,6 +18,7 @@ import { UserService } from 'src/user/user.service';
 import { BlockUserDto } from './dto/block-user.dto';
 import RelationshipStatus from './entities/relationship.enum';
 import { User } from 'src/user/entities/user.entity';
+import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transofrmer';
 
 @Injectable()
 export class RelationshipService {
@@ -29,11 +31,9 @@ export class RelationshipService {
 
   async create(
     createRelationshipDto: CreateRelationshipDto,
-  ): Promise<Relationship> {
+  ): Promise<PopulatedRelationship> {
     if (createRelationshipDto.userA === createRelationshipDto.userB)
-      throw new BadRequestException(
-        'First user and Second user must be different',
-      );
+      throw new BadRequestException('User A and user B must be different');
 
     const userA: User = await this.userService.findById(
       createRelationshipDto.userA,
@@ -45,10 +45,12 @@ export class RelationshipService {
     );
     if (!userB) throw new BadRequestException('User B not found');
 
-    const existedRelationship = await this.findByUserIds(userA.id, userB.id);
-    if (existedRelationship) {
+    const existedRelationship: Relationship = await this.findByUserIds(
+      userA.id,
+      userB.id,
+    );
+    if (existedRelationship)
       throw new BadRequestException('Relationship existed');
-    }
 
     try {
       const data: RelationshipDocument = await new this.relationshipModel({
@@ -58,10 +60,7 @@ export class RelationshipService {
         status: createRelationshipDto.status,
       }).save();
 
-      return {
-        id: data._id,
-        ...data,
-      };
+      return await this.findById(data._id.toString());
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to create relationship',
@@ -70,27 +69,48 @@ export class RelationshipService {
     }
   }
 
-  async findById(id: string, requestedUser: string): Promise<Relationship> {
-    const data: RelationshipDocument = await this.relationshipModel
+  async findById(id: string): Promise<PopulatedRelationship> {
+    return (await this.relationshipModel
       .findOne({
         _id: id,
-        $or: [{ userA: requestedUser }, { userB: requestedUser }],
+        blockedAt: null,
       })
-      .populate('userA')
-      .populate('userB')
+      .populate({
+        path: 'userA',
+        select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'userB',
+        select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
       .select('-__v -deletedAt')
-      .exec();
+      .lean()
+      .transform(MongooseDocumentTransformer)
+      .exec()) as PopulatedRelationship;
+  }
 
-    if (!data) return null;
+  async findMyRelationship(
+    relationshipId: string,
+    requestedUser: string,
+  ): Promise<PopulatedRelationship> {
+    const relationship: PopulatedRelationship =
+      await this.findById(relationshipId);
+    if (!relationship) throw new NotFoundException('Relationship not found');
 
-    return {
-      id: data._id,
-      ...data,
-    };
+    const isUserRelationship: boolean =
+      (relationship.userA as User).id === requestedUser ||
+      (relationship.userB as User).id === requestedUser;
+
+    if (!isUserRelationship)
+      throw new UnauthorizedException('Unauthorized user');
+
+    return relationship;
   }
 
   async findByUserIds(userAId: string, userBId: string): Promise<Relationship> {
-    const data: RelationshipDocument = await this.relationshipModel
+    return (await this.relationshipModel
       .findOne({
         ...(userAId <= userBId
           ? {
@@ -103,44 +123,49 @@ export class RelationshipService {
             }),
       })
       .select('-__v -deletedAt')
-      .exec();
-    if (!data) return null;
-
-    return {
-      id: data._id,
-      ...data,
-    };
+      .lean()
+      .transform(MongooseDocumentTransformer)
+      .exec()) as Relationship;
   }
 
-  async findAllMyRelationship(userId: string): Promise<Relationship[]> {
-    const rawData: RelationshipDocument[] = await this.relationshipModel
+  async findAllMyRelationship(
+    userId: string,
+  ): Promise<PopulatedRelationship[]> {
+    return (await this.relationshipModel
       .find({
         $or: [{ userA: userId }, { userB: userId }],
         deletedAt: null,
       })
+      .populate({
+        path: 'userA',
+        select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'userB',
+        select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
       .select('-__v -deletedAt')
-      .lean();
-    return rawData.map((data) => {
-      return {
-        id: data._id,
-        ...data,
-      };
-    });
+      .lean()
+      .transform(MongooseDocumentTransformer)
+      .exec()) as PopulatedRelationship[];
   }
 
   async update(
     id: string,
     updateRelationshipDto: UpdateRelationshipDto,
     requestedUser: string,
-  ): Promise<RelationshipDocument> {
-    const relationship: any = await this.findById(id, requestedUser);
+  ): Promise<PopulatedRelationship> {
+    const relationship: PopulatedRelationship = await this.findById(id);
     if (!relationship) throw new NotFoundException('Relationship not found');
 
     try {
-      return await this.relationshipModel
+      const data: RelationshipDocument = await this.relationshipModel
         .findByIdAndUpdate(id, { ...updateRelationshipDto }, { new: true })
-        .select('-__v -deletedAt')
         .exec();
+
+      return await this.findById(data._id.toString());
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to update relationship',
@@ -152,11 +177,12 @@ export class RelationshipService {
   async blockUser(
     requestedUser: string,
     blockUserDto: BlockUserDto,
-  ): Promise<Relationship> {
-    const blockBy: User = await this.userService.findById(
+  ): Promise<PopulatedRelationship> {
+    const blocker: User = await this.userService.findById(
       blockUserDto.blockedBy,
     );
-    if (!blockBy) throw new NotFoundException('Block by user not found');
+    if (!blocker) throw new NotFoundException('Block by user not found');
+
     if (blockUserDto.blockedBy !== requestedUser)
       throw new UnauthorizedException('Unauthorized user');
 
@@ -180,12 +206,8 @@ export class RelationshipService {
           : RelationshipStatus.BLOCKED_USER_B;
       const data: RelationshipDocument = await this.relationshipModel
         .findByIdAndUpdate(relationship.id, { status }, { new: true })
-        .select('-__v -deletedAt')
         .exec();
-      return {
-        id: data._id,
-        ...data,
-      };
+      return await this.findById(data._id.toString());
     } catch (error) {
       throw new InternalServerErrorException('Failed to block user', error);
     }

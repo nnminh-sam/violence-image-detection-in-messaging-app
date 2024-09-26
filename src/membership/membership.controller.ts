@@ -10,16 +10,16 @@ import {
   Req,
   NotFoundException,
 } from '@nestjs/common';
-import { MembershipService } from './membership.service';
+import { RequestedUser } from 'src/decorator/requested-user.decorator';
 import { CreateMembershipDto } from './dto/create-membership.dto';
 import { UpdateMembershipDto } from './dto/update-membership.dto';
-
-import * as dotenv from 'dotenv';
+import { MembershipService } from './membership.service';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
-import { RequestedUser } from 'src/decorator/requested-user.decorator';
+import * as dotenv from 'dotenv';
 dotenv.config();
+
 const envVar = process.env;
-const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/conversation-members`;
+const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/memberships`;
 
 @UseGuards(JwtGuard)
 @Controller(API_URL)

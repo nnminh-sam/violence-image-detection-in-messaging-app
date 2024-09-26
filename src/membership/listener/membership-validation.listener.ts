@@ -3,7 +3,7 @@ import { MembershipEvent } from '../entities/membership-event.enum';
 import { Injectable } from '@nestjs/common';
 import { MembershipValidationEvent } from '../event/membership-validation.event';
 import { MembershipService } from '../membership.service';
-import { Membership } from '../entities/membership.entity';
+import { PopulatedMembership } from '../entities/membership.entity';
 
 @Injectable()
 export class MembershipValidationListener {
@@ -12,7 +12,7 @@ export class MembershipValidationListener {
   @OnEvent(MembershipEvent.FIND_BY_USER_AND_CONVERSATION)
   async handleMemberValidationEvent(
     event: MembershipValidationEvent,
-  ): Promise<Membership> {
+  ): Promise<PopulatedMembership> {
     return await this.MembershipService.findByUserIdAndConversationId(
       event.userId,
       event.conversationId,

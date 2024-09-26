@@ -8,7 +8,11 @@ import {
 } from '@nestjs/common';
 import { CreateMessageDto } from './dto/create-conversation-history.dto';
 import { UpdateMessageDto } from './dto/update-conversation-history.dto';
-import { Message, MessageDocument } from './entities/message.entity';
+import {
+  Message,
+  MessageDocument,
+  PopulatedMessage,
+} from './entities/message.entity';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { UserService } from 'src/user/user.service';
@@ -16,8 +20,12 @@ import { ConversationService } from 'src/conversation/conversation.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MembershipEvent } from 'src/membership/entities/membership-event.enum';
 import { MembershipDocument } from 'src/membership/entities/membership.entity';
-import { Conversation } from 'src/conversation/entities/conversation.entity';
+import {
+  Conversation,
+  PopulatedConversation,
+} from 'src/conversation/entities/conversation.entity';
 import { User } from 'src/user/entities/user.entity';
+import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transofrmer';
 
 @Injectable()
 export class MessageService {
@@ -59,9 +67,8 @@ export class MessageService {
     );
     if (!sender) throw new NotFoundException('Sender not found');
 
-    const conversation: Conversation = await this.conversationService.findById(
-      createMessageDto.conversation,
-    );
+    const conversation: PopulatedConversation =
+      await this.conversationService.findById(createMessageDto.conversation);
     if (!conversation) throw new NotFoundException('Conversation not found');
 
     const membership: MembershipDocument =
@@ -95,48 +102,13 @@ export class MessageService {
     }
   }
 
-  async findAll(): Promise<Message[]> {
-    const rawData: MessageDocument[] = await this.MessageModel.find({
-      deletedAt: null,
-    })
-      .populate('sendBy')
-      .populate('conversation')
-      .select('-__v -deletedAt')
-      .exec();
-
-    if (!rawData) return [];
-
-    return rawData.map((data) => {
-      return {
-        id: data._id,
-        ...data,
-      };
-    });
-  }
-
-  async findById(id: string): Promise<Message> {
-    const data: MessageDocument = await this.MessageModel.findOne({
-      _id: id,
-      deletedAt: null,
-    })
-      // .populate('sendBy')
-      // .populate('conversation')
-      .select('-__v -deletedAt')
-      .exec();
-
-    return {
-      id: data._id,
-      ...data,
-    };
-  }
-
-  async findMessage(
+  async findAll(
     conversationId: string,
     page: number,
     size: number,
     requestedUser: string,
   ) {
-    const conversation: Conversation =
+    const conversation: PopulatedConversation =
       await this.conversationService.findById(conversationId);
     if (!conversation) throw new NotFoundException('Conversation not found');
 
@@ -145,57 +117,73 @@ export class MessageService {
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
     const skip: number = (page - 1) * size;
-    const rawData: MessageDocument[] = await this.MessageModel.find({
-      conversation: conversationId,
+    const data: PopulatedMessage[] = (await this.MessageModel.find({
       deletedAt: null,
     })
-      // .populate({
-      //   path: 'conversation',
-      //   select: '-__v',
-      // })
-      // .populate({
-      //   path: 'sendBy',
-      //   select: '-__v -password',
-      // })
+      .populate({
+        path: 'sendBy',
+        select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'conversation',
+        select: '-__v -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .select('-__v -deletedAt')
       .limit(size)
       .skip(skip)
       .sort({
         createdAt: -1,
       })
-      .select('-__v')
-      .exec();
-
-    if (!rawData) return [];
+      .lean()
+      .transform(MongooseDocumentTransformer)
+      .exec()) as PopulatedMessage[];
+    const pagination = {
+      page,
+      size,
+    };
 
     return {
-      data: rawData.map((data) => {
-        return {
-          id: data._id,
-          ...data,
-        };
-      }),
+      data,
       metadata: {
-        pagination: {
-          page,
-          size,
-        },
+        pagination,
       },
     };
+  }
+
+  async findById(id: string): Promise<PopulatedMessage> {
+    return (await this.MessageModel.findOne({
+      _id: id,
+      deletedAt: null,
+    })
+      .populate({
+        path: 'sendBy',
+        select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'conversation',
+        select: '-__v -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .select('-__v -deletedAt')
+      .lean()
+      .transform(MongooseDocumentTransformer)
+      .exec()) as PopulatedMessage;
   }
 
   async update(
     id: string,
     updateMessageDto: UpdateMessageDto,
     requestedUser: string,
-  ): Promise<Message> {
-    const history: Message = await this.findById(id);
-    if (!history) throw new NotFoundException('History not found');
+  ): Promise<PopulatedMessage> {
+    const message: PopulatedMessage = await this.findById(id);
+    if (!message) throw new NotFoundException('History not found');
+    const conversation: Conversation = message.conversation as Conversation;
 
     const membership: MembershipDocument =
-      await this.emitMembershipValidationEvent(
-        requestedUser,
-        history.conversation,
-      );
+      await this.emitMembershipValidationEvent(requestedUser, conversation.id);
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
     try {
@@ -203,13 +191,8 @@ export class MessageService {
         id,
         { ...updateMessageDto },
         { new: true },
-      )
-        .select('-__v -deletedAt')
-        .exec();
-      return {
-        id: data._id,
-        ...data,
-      };
+      ).exec();
+      return await this.findById(data._id.toString());
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to update conversation history',
@@ -218,30 +201,25 @@ export class MessageService {
     }
   }
 
-  async remove(id: string, requestedUser: string): Promise<Message> {
-    const history: Message = await this.findById(id);
-    if (!history) throw new NotFoundException('History not found');
+  async remove(id: string, requestedUser: string): Promise<PopulatedMessage> {
+    const message: PopulatedMessage = await this.findById(id);
+    if (!message) throw new NotFoundException('History not found');
+    const conversation: Conversation = message.conversation as Conversation;
 
     const membership: MembershipDocument =
-      await this.emitMembershipValidationEvent(
-        requestedUser,
-        history.conversation,
-      );
+      await this.emitMembershipValidationEvent(requestedUser, conversation.id);
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
     try {
+      const timestamp: Date = new Date();
       const data: MessageDocument = await this.MessageModel.findByIdAndUpdate(
         id,
-        {
-          deletedAt: new Date(),
-        },
+        { deletedAt: timestamp },
         { new: true },
-      )
-        .select('-__v -deletedAt')
-        .exec();
+      ).exec();
       return {
-        id: data._id,
-        ...data,
+        ...message,
+        deletedAt: timestamp,
       };
     } catch (error) {
       throw new InternalServerErrorException(

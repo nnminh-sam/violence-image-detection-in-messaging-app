@@ -1,10 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import {
-  Conversation,
-  ConversationDocument,
-} from 'src/conversation/entities/conversation.entity';
-import { User, UserDocument } from 'src/user/entities/user.entity';
+import { Conversation } from 'src/conversation/entities/conversation.entity';
+import { User } from 'src/user/entities/user.entity';
 
 @Schema({ timestamps: true })
 export class Message {
@@ -12,7 +9,7 @@ export class Message {
 
   @Prop({
     type: String,
-    ref: 'User',
+    ref: User.name,
     required: true,
     nullable: false,
   })
@@ -20,7 +17,7 @@ export class Message {
 
   @Prop({
     type: String,
-    ref: 'Conversation',
+    ref: Conversation.name,
     required: true,
     nullable: false,
   })

@@ -22,17 +22,13 @@ export class ApiLoggingInterceptor implements NestInterceptor {
     const { method, originalUrl, body } = request;
 
     const start: number = Date.now();
-
     this.logger.log(`Incoming Request: ${method} ${originalUrl}`);
-    this.logger.log('Request Body:', body);
 
     return next.handle().pipe(
       tap((data) => {
         const end: number = Date.now();
         const executionTime = end - start;
-
         this.logger.log(`Outgoing Response: ${method} ${originalUrl}`);
-        this.logger.log('Response Body:', data);
         this.logger.log(`Execution Time: ${executionTime}ms`);
         this.logger.log(`Status Code: ${response.statusCode}`);
       }),

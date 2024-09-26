@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { User } from 'src/user/entities/user.entity';
 
 @Schema({ timestamps: true })
 export class Conversation {
@@ -11,10 +12,18 @@ export class Conversation {
   @Prop({ required: true })
   description: string;
 
-  @Prop({ required: true })
+  @Prop({
+    type: String,
+    ref: User.name,
+    required: true,
+  })
   createdBy: string;
 
-  @Prop({ required: true })
+  @Prop({
+    type: String,
+    ref: User.name,
+    required: true,
+  })
   host: string;
 
   @Prop({ default: null })
@@ -22,5 +31,12 @@ export class Conversation {
 }
 
 export type ConversationDocument = Conversation & Document;
+
+export type PopulatedConversation =
+  | Conversation
+  | {
+      createdBy: User;
+      host: User;
+    };
 
 export const ConversationSchema = SchemaFactory.createForClass(Conversation);

@@ -10,6 +10,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
+import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transofrmer';
 
 @Injectable()
 export class UserService {
@@ -45,28 +46,19 @@ export class UserService {
   }
 
   async findById(id: string): Promise<User> {
-    const data: UserDocument = await this.userModel
+    return (await this.userModel
       .findOne({ _id: id, deletedAt: null })
       .select('-password -__v -deletedAt')
-      .exec();
-    if (!data) return null;
-
-    return {
-      id: data._id,
-      ...data,
-    };
+      .transform(MongooseDocumentTransformer)
+      .exec()) as User;
   }
 
   async findUnavailableUser(id: string): Promise<User> {
-    const data: UserDocument = await this.userModel
+    return (await this.userModel
       .findOne({ _id: id })
       .select('-password -__v')
-      .exec();
-
-    return {
-      id: data._id,
-      ...data,
-    };
+      .transform(MongooseDocumentTransformer)
+      .exec()) as User;
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
@@ -78,10 +70,7 @@ export class UserService {
         .findByIdAndUpdate(id, { ...updateUserDto }, { new: true })
         .select('-password -__v -deletedAt')
         .exec();
-      return {
-        id: data._id,
-        ...data,
-      };
+      return this.findById(data._id.toString());
     } catch (error) {
       throw new InternalServerErrorException('Failed to update user', error);
     }
@@ -92,13 +81,14 @@ export class UserService {
     if (!user) throw new NotFoundException('User not found');
 
     try {
+      const timestamp: Date = new Date();
       const data: UserDocument = await this.userModel
-        .findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true })
+        .findByIdAndUpdate(id, { deletedAt: timestamp }, { new: true })
         .select('-__v -password')
         .exec();
       return {
-        id: data._id,
-        ...data,
+        ...user,
+        deletedAt: timestamp,
       };
     } catch (error) {
       throw new InternalServerErrorException('Failed to delete user', error);

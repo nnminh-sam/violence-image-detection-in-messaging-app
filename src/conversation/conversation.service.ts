@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
@@ -12,12 +13,16 @@ import { Model } from 'mongoose';
 import {
   Conversation,
   ConversationDocument,
+  PopulatedConversation,
 } from './entities/conversation.entity';
 import { UserService } from 'src/user/user.service';
 import { User } from 'src/user/entities/user.entity';
+import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transofrmer';
 
 @Injectable()
 export class ConversationService {
+  private readonly logger: Logger = new Logger(ConversationService.name);
+
   constructor(
     @InjectModel(Conversation.name)
     private conversationModel: Model<Conversation>,
@@ -27,7 +32,7 @@ export class ConversationService {
 
   async create(
     createConversationDto: CreateConversationDto,
-  ): Promise<Conversation> {
+  ): Promise<PopulatedConversation> {
     const creator: User = await this.userService.findById(
       createConversationDto.createdBy,
     );
@@ -46,10 +51,7 @@ export class ConversationService {
       const data: ConversationDocument = await new this.conversationModel({
         ...createConversationDto,
       }).save();
-      return {
-        id: data._id,
-        ...data,
-      };
+      return await this.findById(data._id.toString());
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to create conversation',
@@ -67,36 +69,44 @@ export class ConversationService {
     return conversation != null ? true : false;
   }
 
-  async findById(id: string): Promise<Conversation> {
-    const data: ConversationDocument = await this.conversationModel
+  async findById(id: string): Promise<PopulatedConversation> {
+    return (await this.conversationModel
       .findOne({
         _id: id,
         deletedAt: null,
       })
-      .populate('createdBy')
-      .populate('host')
+      .populate({
+        path: 'createdBy',
+        select: '-__v -deletedAt -password',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'host',
+        select: '-__v -deletedAt -password',
+        transform: MongooseDocumentTransformer,
+      })
       .select('-__v -deletedAt')
-      .exec();
-    return {
-      id: data._id,
-      ...data,
-    };
+      .lean()
+      .transform(MongooseDocumentTransformer)
+      .exec()) as PopulatedConversation;
   }
 
   async isConversationHost(
     conversationId: string,
     userId: string,
   ): Promise<boolean> {
-    const conversation: Conversation = await this.findById(conversationId);
-    return conversation.host === userId;
+    const conversation: PopulatedConversation =
+      await this.findById(conversationId);
+    const host: User = conversation.host as User;
+    return host.id === userId;
   }
 
   async update(
     id: string,
     updateConversationDto: UpdateConversationDto,
     requestedUser: string,
-  ): Promise<Conversation> {
-    const conversation: Conversation = await this.findById(id);
+  ): Promise<PopulatedConversation> {
+    const conversation: PopulatedConversation = await this.findById(id);
     if (!conversation) throw new NotFoundException('Conversation not found');
 
     const isAuthorizedUser: boolean = await this.isConversationHost(
@@ -108,13 +118,11 @@ export class ConversationService {
     try {
       const data: ConversationDocument = await this.conversationModel
         .findByIdAndUpdate(id, { ...updateConversationDto }, { new: true })
-        .select('-__v -deletedAt')
         .exec();
-      return {
-        id: data._id,
-        ...data,
-      };
+
+      return await this.findById(data._id.toString());
     } catch (error) {
+      this.logger.error(error);
       throw new InternalServerErrorException(
         'Failed to update conversation',
         error,
@@ -122,8 +130,11 @@ export class ConversationService {
     }
   }
 
-  async remove(id: string, requestedUser: string): Promise<Conversation> {
-    const conversation: Conversation = await this.findById(id);
+  async remove(
+    id: string,
+    requestedUser: string,
+  ): Promise<PopulatedConversation> {
+    const conversation: PopulatedConversation = await this.findById(id);
     if (!conversation) throw new NotFoundException('Conversation not found');
 
     const isAuthorizedUser: boolean = await this.isConversationHost(
@@ -133,14 +144,14 @@ export class ConversationService {
     if (!isAuthorizedUser) throw new UnauthorizedException('Unauthorized user');
 
     try {
+      const timestamp: Date = new Date();
       const data: ConversationDocument = await this.conversationModel
-        .findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true })
-        .select('-__v')
+        .findByIdAndUpdate(id, { deletedAt: timestamp }, { new: true })
         .exec();
 
       return {
-        id: data._id,
-        ...data,
+        ...conversation,
+        deletedAt: timestamp,
       };
     } catch (error) {
       throw new InternalServerErrorException(

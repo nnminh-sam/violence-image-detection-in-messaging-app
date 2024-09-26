@@ -2,15 +2,25 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { MembershipStatus } from './membership-status.enum';
 import { MembershipRole } from './membership-role.enum';
+import { User } from 'src/user/entities/user.entity';
+import { Conversation } from 'src/conversation/entities/conversation.entity';
 
 @Schema({ timestamps: true })
 export class Membership {
   id: string;
 
-  @Prop({ required: true })
+  @Prop({
+    type: String,
+    ref: User.name,
+    required: true,
+  })
   user: string;
 
-  @Prop({ required: true })
+  @Prop({
+    type: String,
+    ref: Conversation.name,
+    required: true,
+  })
   conversation: string;
 
   @Prop({ required: true })
@@ -21,6 +31,13 @@ export class Membership {
 }
 
 export type MembershipDocument = Membership & Document;
+
+export type PopulatedMembership =
+  | Membership
+  | {
+      user: User;
+      conversation: Conversation;
+    };
 
 export const MembershipSchema = SchemaFactory.createForClass(Membership);
 
