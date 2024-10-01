@@ -9,7 +9,14 @@ import { ApiLoggingInterceptor } from './interceptor/api-logging.interceptor';
 dotenv.config();
 
 async function bootstrap() {
+  const runningMode: string = process.env.MODE;
+
   const app = await NestFactory.create(AppModule);
+  app.enableCors({
+    origin: runningMode === 'dev' ? '*' : process.env.CLIENT,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

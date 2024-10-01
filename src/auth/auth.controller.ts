@@ -1,4 +1,12 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { AuthenticationResponseDto } from './dto/authentication-response.dto';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { RequestedUser } from 'src/decorator/requested-user.decorator';
 import { RegistrationPayloadDto } from './dto/registration-payload.dto';
 import { LocalGuard } from './guards/local.guard';
@@ -14,13 +22,15 @@ const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/auth`;
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @UseGuards(LocalGuard)
   @Post('login')
+  @UseGuards(LocalGuard)
+  @HttpCode(200)
   async login(@RequestedUser() user) {
     return await this.authService.login(user);
   }
 
   @Post('register')
+  @HttpCode(200)
   async register(
     @Body()
     registrationPayload: RegistrationPayloadDto,

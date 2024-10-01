@@ -41,7 +41,10 @@ export class UserService {
         email,
         deletedAt: null,
       })
-      .select('-__v -deletedAt')
+      .select({
+        __v: false,
+        deletedAt: false,
+      })
       .exec();
   }
 
