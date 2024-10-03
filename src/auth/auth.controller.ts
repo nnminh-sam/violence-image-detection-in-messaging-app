@@ -1,11 +1,12 @@
-import { AuthenticationResponseDto } from './dto/authentication-response.dto';
 import {
-  BadRequestException,
   Body,
   Controller,
+  Get,
   HttpCode,
   Post,
   UseGuards,
+  Headers,
+  BadRequestException,
 } from '@nestjs/common';
 import { RequestedUser } from 'src/decorator/requested-user.decorator';
 import { RegistrationPayloadDto } from './dto/registration-payload.dto';
@@ -36,5 +37,13 @@ export class AuthController {
     registrationPayload: RegistrationPayloadDto,
   ) {
     return await this.authService.register(registrationPayload);
+  }
+
+  @Get('validate-token')
+  async validateToken(@Headers('authorization') authHeader: string) {
+    if (!authHeader) throw new BadRequestException('Token not found');
+    const token: string = authHeader.split(' ')[1];
+    if (!token) throw new BadRequestException('Token not found');
+    return await this.authService.validateToken(token);
   }
 }

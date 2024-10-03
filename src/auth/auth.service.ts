@@ -18,6 +18,11 @@ export class AuthService {
     private userService: UserService,
   ) {}
 
+  private isTokenExpired(exp: number): boolean {
+    const currentTime: number = Math.floor(Date.now() / 1000);
+    return currentTime > exp;
+  }
+
   async validateUser({
     email,
     password,
@@ -34,6 +39,23 @@ export class AuthService {
     return {
       id: user._id,
       ...user,
+    };
+  }
+
+  async validateToken(token: string) {
+    try {
+      const claims: any = this.jwtService.decode(token);
+      const expiredToken = this.isTokenExpired(claims.exp);
+      if (expiredToken) {
+        throw new BadRequestException('Token expired');
+      }
+    } catch (error: any) {
+      throw new BadRequestException(
+        error.message === 'Token expired' ? error.message : 'Invalid token',
+      );
+    }
+    return {
+      accessToken: token,
     };
   }
 
