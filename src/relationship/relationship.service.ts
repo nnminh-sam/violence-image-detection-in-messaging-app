@@ -136,12 +136,16 @@ export class RelationshipService {
     size: number,
     sortBy: string,
     orderBy: string,
+    status: string,
   ) {
     const skipValue: number = (page - 1) * size;
     const data: PopulatedRelationship[] = (await this.relationshipModel
       .find({
         $or: [{ userA: userId }, { userB: userId }],
-        deletedAt: null,
+        status: {
+          $eq: status.toUpperCase(),
+        },
+        blockedAt: null,
       })
       .populate({
         path: 'userA',
