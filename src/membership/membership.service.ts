@@ -165,8 +165,10 @@ export class MembershipService {
     return {
       data,
       metadata: {
-        page,
-        size,
+        pagination: {
+          page,
+          size,
+        },
         count: data.length,
       },
     };
@@ -204,8 +206,10 @@ export class MembershipService {
     return {
       data,
       metadata: {
-        page,
-        size,
+        pagination: {
+          page,
+          size,
+        },
         count: data.length,
       },
     };

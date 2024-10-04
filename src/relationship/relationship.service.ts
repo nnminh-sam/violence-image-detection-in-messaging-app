@@ -168,8 +168,8 @@ export class RelationshipService {
       data,
       metadata: {
         pagination: {
-          page: page,
-          size: size,
+          page,
+          size,
         },
         count: data.length,
       },

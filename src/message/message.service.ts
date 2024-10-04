@@ -143,8 +143,10 @@ export class MessageService {
     return {
       data,
       metadata: {
-        page,
-        size,
+        pagination: {
+          page,
+          size,
+        },
         count: data.length,
       },
     };
