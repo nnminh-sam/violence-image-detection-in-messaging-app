@@ -19,7 +19,7 @@ import { UserService } from 'src/user/user.service';
 import { BlockUserDto } from './dto/block-user.dto';
 import RelationshipStatus from './entities/relationship.enum';
 import { User } from 'src/user/entities/user.entity';
-import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transofrmer';
+import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 
 @Injectable()
 export class RelationshipService {
@@ -90,7 +90,6 @@ export class RelationshipService {
         transform: MongooseDocumentTransformer,
       })
       .select('-__v -deletedAt')
-      .lean()
       .transform(MongooseDocumentTransformer)
       .exec()) as PopulatedRelationship;
   }
@@ -127,7 +126,6 @@ export class RelationshipService {
             }),
       })
       .select('-__v -deletedAt')
-      .lean()
       .transform(MongooseDocumentTransformer)
       .exec()) as Relationship;
   }
@@ -161,7 +159,6 @@ export class RelationshipService {
       .sort({
         [sortBy]: orderBy.toLowerCase() === 'asc' ? 1 : -1,
       })
-      .lean()
       .transform((doc: any) => {
         return doc.map(MongooseDocumentTransformer);
       })

@@ -25,7 +25,7 @@ import {
   PopulatedConversation,
 } from 'src/conversation/entities/conversation.entity';
 import { User } from 'src/user/entities/user.entity';
-import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transofrmer';
+import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 
 @Injectable()
 export class MessageService {
@@ -136,18 +136,16 @@ export class MessageService {
       .sort({
         createdAt: -1,
       })
-      .lean()
-      .transform(MongooseDocumentTransformer)
+      .transform((doc: any) => {
+        return MongooseDocumentTransformer(doc);
+      })
       .exec()) as PopulatedMessage[];
-    const pagination = {
-      page,
-      size,
-    };
-
     return {
       data,
       metadata: {
-        pagination,
+        page,
+        size,
+        count: data.length,
       },
     };
   }
@@ -168,7 +166,6 @@ export class MessageService {
         transform: MongooseDocumentTransformer,
       })
       .select('-__v -deletedAt')
-      .lean()
       .transform(MongooseDocumentTransformer)
       .exec()) as PopulatedMessage;
   }

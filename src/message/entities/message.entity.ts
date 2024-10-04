@@ -35,10 +35,12 @@ export class Message {
 
 export type MessageDocument = Message & Document;
 
-export type PopulatedMessage = Message & {
-  sendBy: User;
-  conversation: Conversation;
-};
+export type PopulatedMessage =
+  | Message
+  | {
+      sendBy: User;
+      conversation: Conversation;
+    };
 
 export const MessageSchema = SchemaFactory.createForClass(Message);
 

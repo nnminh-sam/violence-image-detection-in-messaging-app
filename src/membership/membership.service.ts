@@ -22,13 +22,13 @@ import {
   PopulatedConversation,
 } from 'src/conversation/entities/conversation.entity';
 import { User } from 'src/user/entities/user.entity';
-import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transofrmer';
+import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 
 @Injectable()
 export class MembershipService {
   constructor(
     @InjectModel(Membership.name)
-    private MembershipModel: Model<Membership>,
+    private membershipModel: Model<Membership>,
 
     private readonly userService: UserService,
 
@@ -61,7 +61,7 @@ export class MembershipService {
       throw new BadRequestException('Conversation membership existed');
 
     try {
-      const data: MembershipDocument = await new this.MembershipModel({
+      const data: MembershipDocument = await new this.membershipModel({
         ...createMembershipDto,
         status: MembershipStatus.PARTICIPATING,
       }).save();
@@ -76,9 +76,10 @@ export class MembershipService {
   }
 
   async findById(id: string): Promise<PopulatedMembership> {
-    return (await this.MembershipModel.findOne({
-      _id: id,
-    })
+    const data: PopulatedMembership = (await this.membershipModel
+      .findOne({
+        _id: id,
+      })
       .populate({
         path: 'conversation',
         select: '-__v -deletedAt',
@@ -92,16 +93,18 @@ export class MembershipService {
       .select('-__v -deletedAt')
       .transform(MongooseDocumentTransformer)
       .exec()) as PopulatedMembership;
+    return data;
   }
 
   public async findByUserIdAndConversationId(
     userId: string,
     conversationId: string,
   ): Promise<PopulatedMembership> {
-    return (await this.MembershipModel.findOne({
-      user: userId,
-      conversation: conversationId,
-    })
+    return (await this.membershipModel
+      .findOne({
+        user: userId,
+        conversation: conversationId,
+      })
       .populate({
         path: 'conversation',
         select: '-__v -deletedAt',
@@ -120,7 +123,11 @@ export class MembershipService {
   async findMemberships(
     conversationId: string,
     requestedUser: string,
-  ): Promise<PopulatedMembership[]> {
+    page: number,
+    size: number,
+    sortBy: string,
+    orderBy: string,
+  ) {
     const conversation: PopulatedConversation =
       await this.conversationService.findById(conversationId);
     if (!conversation) throw new NotFoundException('Conversation not found');
@@ -129,10 +136,12 @@ export class MembershipService {
       await this.findByUserIdAndConversationId(requestedUser, conversationId);
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
-    return (await this.MembershipModel.find({
-      conversation: conversationId,
-      status: MembershipStatus.PARTICIPATING,
-    })
+    const skip: number = (page - 1) * size;
+    const data = (await this.membershipModel
+      .find({
+        conversation: conversationId,
+        status: MembershipStatus.PARTICIPATING,
+      })
       .populate({
         path: 'conversation',
         select: '-__v -deletedAt',
@@ -144,8 +153,62 @@ export class MembershipService {
         transform: MongooseDocumentTransformer,
       })
       .select('-__v -deletedAt')
-      .transform(MongooseDocumentTransformer)
+      .limit(size)
+      .skip(skip)
+      .sort({
+        [sortBy]: orderBy === 'asc' ? 1 : -1,
+      })
+      .transform((doc: any) => {
+        return doc.map(MongooseDocumentTransformer);
+      })
       .exec()) as PopulatedMembership[];
+    return {
+      data,
+      metadata: {
+        page,
+        size,
+        count: data.length,
+      },
+    };
+  }
+
+  async findParticipatedConversations(
+    userId: string,
+    page: number,
+    size: number,
+    sortBy: string,
+    orderBy: string,
+  ) {
+    const skip: number = (page - 1) * size;
+    const data = (await this.membershipModel
+      .find({
+        user: userId,
+        status: MembershipStatus.PARTICIPATING,
+      })
+      .populate({
+        path: 'conversation',
+        select: '-__v -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .select('-__v -deletedAt')
+      .limit(size)
+      .skip(skip)
+      .sort({
+        [sortBy]: orderBy === 'asc' ? 1 : -1,
+      })
+      .transform((doc: any) => {
+        return doc.map(MongooseDocumentTransformer);
+      })
+      .exec()) as PopulatedMembership[];
+
+    return {
+      data,
+      metadata: {
+        page,
+        size,
+        count: data.length,
+      },
+    };
   }
 
   async update(
@@ -168,12 +231,9 @@ export class MembershipService {
       );
 
     try {
-      const data: MembershipDocument =
-        await this.MembershipModel.findByIdAndUpdate(
-          id,
-          { ...updateMembershipDto },
-          { new: true },
-        ).exec();
+      const data: MembershipDocument = await this.membershipModel
+        .findByIdAndUpdate(id, { ...updateMembershipDto }, { new: true })
+        .exec();
       return await this.findById(data._id.toString());
     } catch (error) {
       throw new InternalServerErrorException(
@@ -199,12 +259,13 @@ export class MembershipService {
       );
 
     try {
-      const data: MembershipDocument =
-        await this.MembershipModel.findByIdAndUpdate(
+      const data: MembershipDocument = await this.membershipModel
+        .findByIdAndUpdate(
           id,
           { status: MembershipStatus.REMOVED },
           { new: true },
-        ).exec();
+        )
+        .exec();
       return {
         ...membership,
         status: MembershipStatus.REMOVED,

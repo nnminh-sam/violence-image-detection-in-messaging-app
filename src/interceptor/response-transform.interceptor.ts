@@ -11,7 +11,7 @@ export class ResponseTransformInterceptor implements NestInterceptor {
         let { data, metadata, ...rest } = rawData;
 
         if (!data && !metadata) {
-          data = rest;
+          data = rest._doc ? rest._doc : rest;
           metadata = undefined;
         }
 

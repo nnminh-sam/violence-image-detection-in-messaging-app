@@ -10,7 +10,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transofrmer';
+import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 
 @Injectable()
 export class UserService {
@@ -53,7 +53,6 @@ export class UserService {
       .findOne({ _id: id, deletedAt: null })
       .select('-password -__v -deletedAt')
       .transform(MongooseDocumentTransformer)
-      .lean()
       .exec()) as User;
   }
 

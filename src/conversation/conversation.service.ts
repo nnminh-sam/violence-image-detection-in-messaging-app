@@ -17,7 +17,7 @@ import {
 } from './entities/conversation.entity';
 import { UserService } from 'src/user/user.service';
 import { User } from 'src/user/entities/user.entity';
-import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transofrmer';
+import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 
 @Injectable()
 export class ConversationService {
@@ -86,7 +86,6 @@ export class ConversationService {
         transform: MongooseDocumentTransformer,
       })
       .select('-__v -deletedAt')
-      .lean()
       .transform(MongooseDocumentTransformer)
       .exec()) as PopulatedConversation;
   }
