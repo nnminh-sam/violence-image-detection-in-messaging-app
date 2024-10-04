@@ -8,6 +8,7 @@ import {
   Relationship,
   RelationshipSchema,
 } from './entities/relationship.entity';
+import { MembershipModule } from 'src/membership/membership.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import {
     ]),
     UserModule,
     ConversationModule,
+    MembershipModule,
   ],
   controllers: [RelationshipController],
   providers: [RelationshipService],

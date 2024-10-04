@@ -20,6 +20,7 @@ import { MembershipValidationListener } from './listener/membership-validation.l
     ConversationModule,
   ],
   controllers: [MembershipController],
+  exports: [MembershipService],
   providers: [MembershipService, MembershipValidationListener],
 })
 export class MembershipModule {}

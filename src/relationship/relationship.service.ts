@@ -23,6 +23,8 @@ import { User } from 'src/user/entities/user.entity';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 import { ConversationService } from 'src/conversation/conversation.service';
 import { PopulatedConversation } from 'src/conversation/entities/conversation.entity';
+import { MembershipService } from 'src/membership/membership.service';
+import { MembershipRole } from 'src/membership/entities/membership-role.enum';
 
 @Injectable()
 export class RelationshipService {
@@ -33,6 +35,7 @@ export class RelationshipService {
     private relationshipModel: Model<Relationship>,
     private readonly userService: UserService,
     private readonly conversationService: ConversationService,
+    private readonly membershipService: MembershipService,
   ) {}
 
   async create(
@@ -206,25 +209,41 @@ export class RelationshipService {
 
     const userA: User = relationship.userA;
     const userB: User = relationship.userB;
+    const hostId: string = requestedUserId;
 
     try {
       const privateConversationPayload: CreateConversationDto = {
-        name:
-          requestedUserId === userA.id
-            ? `${userB.lastName} ${userB.firstName}`
-            : `${userA.lastName} ${userA.firstName}`,
-        description: 'Private conversation',
-        createdBy:
-          relationship.status === RelationshipStatus.REQUEST_USER_A
-            ? userA.id
-            : userB.id,
-        host:
-          relationship.status === RelationshipStatus.REQUEST_USER_A
-            ? userA.id
-            : userB.id,
+        name: `Private conversation [${relationshipId}]`,
+        description: `Private conversation [${relationshipId}]`,
+        createdBy: hostId,
+        host: hostId,
       };
       const privateConversation: PopulatedConversation =
         await this.conversationService.create(privateConversationPayload);
+
+      const userAMembership = await this.membershipService.create(
+        requestedUserId,
+        {
+          user: userA.id,
+          conversation: privateConversation.id,
+          role:
+            userA.id === requestedUserId
+              ? MembershipRole.HOST
+              : MembershipRole.MEMBER,
+        },
+      );
+
+      const userBMembership = await this.membershipService.create(
+        requestedUserId,
+        {
+          user: userB.id,
+          conversation: privateConversation.id,
+          role:
+            userB.id === requestedUserId
+              ? MembershipRole.HOST
+              : MembershipRole.MEMBER,
+        },
+      );
 
       const data: RelationshipDocument = await this.relationshipModel
         .findByIdAndUpdate(
@@ -238,6 +257,7 @@ export class RelationshipService {
         .exec();
       return await this.findById(data._id.toString());
     } catch (error) {
+      console.log('error:', error);
       throw new InternalServerErrorException(
         'Failed to update relationship',
         error,

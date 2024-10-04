@@ -32,12 +32,10 @@ export class Membership {
 
 export type MembershipDocument = Membership & Document;
 
-export type PopulatedMembership =
-  | Membership
-  | {
-      user: User;
-      conversation: Conversation;
-    };
+export type PopulatedMembership = Membership & {
+  user: User;
+  conversation: Conversation;
+};
 
 export const MembershipSchema = SchemaFactory.createForClass(Membership);
 
