@@ -32,11 +32,9 @@ export class Conversation {
 
 export type ConversationDocument = Conversation & Document;
 
-export type PopulatedConversation =
-  | Conversation
-  | {
-      createdBy: User;
-      host: User;
-    };
+export type PopulatedConversation = Conversation & {
+  createdBy: User;
+  host: User;
+};
 
 export const ConversationSchema = SchemaFactory.createForClass(Conversation);

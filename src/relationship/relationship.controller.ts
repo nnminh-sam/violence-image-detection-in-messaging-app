@@ -29,8 +29,12 @@ export class RelationshipController {
   @Post()
   async create(
     @Body() createRelationshipDto: CreateRelationshipDto,
+    @RequestedUser() user: any,
   ): Promise<PopulatedRelationship> {
-    return await this.relationshipService.create(createRelationshipDto);
+    return await this.relationshipService.create(
+      user.id,
+      createRelationshipDto,
+    );
   }
 
   @Get('/my')
@@ -58,6 +62,17 @@ export class RelationshipController {
     @Param('id') id: string,
   ): Promise<PopulatedRelationship> {
     return await this.relationshipService.findMyRelationship(id, user.id);
+  }
+
+  @Get('confirm-friendship/:relationshipId')
+  async confirmFriend(
+    @RequestedUser() user: any,
+    @Param('relationshipId') relationshipId: string,
+  ) {
+    return await this.relationshipService.confirmFriendship(
+      user.id,
+      relationshipId,
+    );
   }
 
   @Patch('block-user')

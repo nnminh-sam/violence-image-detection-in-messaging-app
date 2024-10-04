@@ -1,3 +1,4 @@
+import { ConversationModule } from 'src/conversation/conversation.module';
 import { Module } from '@nestjs/common';
 import { RelationshipService } from './relationship.service';
 import { RelationshipController } from './relationship.controller';
@@ -18,6 +19,7 @@ import {
       },
     ]),
     UserModule,
+    ConversationModule,
   ],
   controllers: [RelationshipController],
   providers: [RelationshipService],

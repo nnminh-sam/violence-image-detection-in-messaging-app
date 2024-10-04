@@ -1,3 +1,4 @@
+import { CreateConversationDto } from './../conversation/dto/create-conversation.dto';
 import {
   BadRequestException,
   Injectable,
@@ -20,6 +21,8 @@ import { BlockUserDto } from './dto/block-user.dto';
 import RelationshipStatus from './entities/relationship.enum';
 import { User } from 'src/user/entities/user.entity';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
+import { ConversationService } from 'src/conversation/conversation.service';
+import { PopulatedConversation } from 'src/conversation/entities/conversation.entity';
 
 @Injectable()
 export class RelationshipService {
@@ -28,11 +31,12 @@ export class RelationshipService {
   constructor(
     @InjectModel(Relationship.name)
     private relationshipModel: Model<Relationship>,
-
-    private userService: UserService,
+    private readonly userService: UserService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   async create(
+    requestedUserId: string,
     createRelationshipDto: CreateRelationshipDto,
   ): Promise<PopulatedRelationship> {
     if (createRelationshipDto.userA === createRelationshipDto.userB)
@@ -54,6 +58,15 @@ export class RelationshipService {
     );
     if (existedRelationship)
       throw new BadRequestException('Relationship existed');
+
+    if (
+      createRelationshipDto.status !== RelationshipStatus.REQUEST_USER_A &&
+      createRelationshipDto.status !== RelationshipStatus.REQUEST_USER_B
+    ) {
+      throw new BadRequestException(
+        'Relationship status must be REQUEST_USER_A or REQUEST_USER_B',
+      );
+    }
 
     try {
       const data: RelationshipDocument = await new this.relationshipModel({
@@ -178,6 +191,58 @@ export class RelationshipService {
         count: data.length,
       },
     };
+  }
+
+  async confirmFriendship(requestedUserId: string, relationshipId: string) {
+    const relationship: PopulatedRelationship =
+      await this.findById(relationshipId);
+    if (!relationship) {
+      throw new NotFoundException('Relationship not found');
+    }
+
+    if (relationship.status === RelationshipStatus.FRIENDS) {
+      throw new BadRequestException('Users are already friends');
+    }
+
+    const userA: User = relationship.userA;
+    const userB: User = relationship.userB;
+
+    try {
+      const privateConversationPayload: CreateConversationDto = {
+        name:
+          requestedUserId === userA.id
+            ? `${userB.lastName} ${userB.firstName}`
+            : `${userA.lastName} ${userA.firstName}`,
+        description: 'Private conversation',
+        createdBy:
+          relationship.status === RelationshipStatus.REQUEST_USER_A
+            ? userA.id
+            : userB.id,
+        host:
+          relationship.status === RelationshipStatus.REQUEST_USER_A
+            ? userA.id
+            : userB.id,
+      };
+      const privateConversation: PopulatedConversation =
+        await this.conversationService.create(privateConversationPayload);
+
+      const data: RelationshipDocument = await this.relationshipModel
+        .findByIdAndUpdate(
+          relationshipId,
+          {
+            privateConversation: privateConversation.id,
+            status: RelationshipStatus.FRIENDS,
+          },
+          { new: true },
+        )
+        .exec();
+      return await this.findById(data._id.toString());
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to update relationship',
+        error,
+      );
+    }
   }
 
   async update(
