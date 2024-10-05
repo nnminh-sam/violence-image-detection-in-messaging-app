@@ -58,7 +58,7 @@ export class MessageService {
   async create(
     createMessageDto: CreateMessageDto,
     requestedUser: string,
-  ): Promise<MessageDocument> {
+  ): Promise<PopulatedMessage> {
     if (createMessageDto.sendBy !== requestedUser)
       throw new UnauthorizedException('Unauthorized user');
 
@@ -92,7 +92,7 @@ export class MessageService {
         attachment: createMessageDto.attachment,
       });
 
-      return createdMessage;
+      return await this.findById(createdMessage._id.toString());
     } catch (error) {
       this.logger.error(error);
       throw new InternalServerErrorException(

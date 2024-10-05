@@ -52,6 +52,7 @@ export class MessageController {
 
   @Get('/:id')
   async findOne(@Param('id') id: string) {
+    console.log('id:', id);
     const data = await this.MessageService.findById(id);
     if (!data) throw new NotFoundException('History not found');
     return data;
