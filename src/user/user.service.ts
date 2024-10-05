@@ -115,6 +115,15 @@ export class UserService {
                   },
                 },
               },
+              {
+                $project: {
+                  id: '$_id',
+                  _id: 0,
+                  userA: 1,
+                  userB: 1,
+                  status: 1,
+                },
+              },
             ],
             as: 'relationship',
           },
@@ -129,8 +138,8 @@ export class UserService {
             relationship: {
               $cond: {
                 if: { $gt: [{ $size: '$relationship' }, 0] },
-                then: { $arrayElemAt: ['$relationship.status', 0] },
-                else: 'no relationship',
+                then: { $arrayElemAt: ['$relationship', 0] },
+                else: null,
               },
             },
           },
