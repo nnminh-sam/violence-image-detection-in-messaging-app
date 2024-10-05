@@ -146,9 +146,12 @@ export class UserService {
     return {
       data,
       metadata: {
-        page,
-        size,
-        totalPage,
+        pagination: {
+          page,
+          size,
+          totalPage,
+          totalDocument: totalDocuments,
+        },
         count: data.length,
       },
     };
