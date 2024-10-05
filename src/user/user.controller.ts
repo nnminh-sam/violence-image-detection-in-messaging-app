@@ -40,7 +40,6 @@ export class UserController {
     @Query('sortBy') sortBy: string,
     @Query('orderBy') orderBy: string,
     @Query('searchValue') searchValue: string,
-    @Query('status') status: string,
   ) {
     return await this.userService.findUsers(
       user.id,
@@ -49,7 +48,6 @@ export class UserController {
       sortBy || 'firstName',
       orderBy || 'asc',
       searchValue,
-      status || 'friends',
     );
   }
 

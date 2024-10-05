@@ -73,28 +73,33 @@ export class UserService {
     sortBy: string,
     orderBy: string,
     searchValue: string,
-    status: string,
   ) {
-    const skip: number = (page - 1) * size;
-    const users = await this.userModel
-      .aggregate([
+    const matchingConditions = {
+      $and: [
+        { _id: { $ne: new Types.ObjectId(requestedUserId) } },
         {
-          $match: {
-            $and: [
-              { _id: { $ne: new Types.ObjectId(requestedUserId) } },
-              {
-                ...(searchValue && {
-                  $or: [
-                    { email: { $regex: searchValue, $options: 'i' } },
-                    { username: { $regex: searchValue, $options: 'i' } },
-                    { firstName: { $regex: searchValue, $options: 'i' } },
-                    { lastName: { $regex: searchValue, $options: 'i' } },
-                  ],
-                }),
-              },
+          ...(searchValue && {
+            $or: [
+              { email: { $regex: searchValue, $options: 'i' } },
+              { username: { $regex: searchValue, $options: 'i' } },
+              { firstName: { $regex: searchValue, $options: 'i' } },
+              { lastName: { $regex: searchValue, $options: 'i' } },
             ],
-          },
+          }),
         },
+        { deletedAt: null },
+      ],
+    };
+
+    const totalDocuments = await this.userModel.countDocuments({
+      ...matchingConditions,
+    });
+    const totalPage: number = Math.ceil(totalDocuments / size);
+
+    const skip: number = (page - 1) * size;
+    const data = await this.userModel
+      .aggregate([
+        { $match: { ...matchingConditions } },
         {
           $lookup: {
             from: 'relationships',
@@ -139,11 +144,12 @@ export class UserService {
       .exec();
 
     return {
-      data: users,
+      data,
       metadata: {
         page,
         size,
-        count: users.length,
+        totalPage,
+        count: data.length,
       },
     };
   }
