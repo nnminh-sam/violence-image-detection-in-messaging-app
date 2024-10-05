@@ -8,9 +8,11 @@ import { RegistrationPayloadDto } from 'src/auth/dto/registration-payload.dto';
 import { User, UserDocument } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
+import { Relationship } from 'src/relationship/entities/relationship.entity';
+import RelationshipStatus from 'src/relationship/entities/relationship.enum';
 
 @Injectable()
 export class UserService {
@@ -71,46 +73,76 @@ export class UserService {
     sortBy: string,
     orderBy: string,
     searchValue: string,
+    status: string,
   ) {
     const skip: number = (page - 1) * size;
-    const filter = searchValue
-      ? {
-          $and: [
-            {
-              $or: [
-                { email: { $regex: searchValue, $options: 'i' } },
-                { username: { $regex: searchValue, $options: 'i' } },
-                { firstName: { $regex: searchValue, $options: 'i' } },
-                { lastName: { $regex: searchValue, $options: 'i' } },
-              ],
-            },
-            {
-              _id: {
-                $ne: requestedUserId,
+    const users = await this.userModel
+      .aggregate([
+        {
+          $match: {
+            $and: [
+              { _id: { $ne: new Types.ObjectId(requestedUserId) } },
+              {
+                ...(searchValue && {
+                  $or: [
+                    { email: { $regex: searchValue, $options: 'i' } },
+                    { username: { $regex: searchValue, $options: 'i' } },
+                    { firstName: { $regex: searchValue, $options: 'i' } },
+                    { lastName: { $regex: searchValue, $options: 'i' } },
+                  ],
+                }),
+              },
+            ],
+          },
+        },
+        {
+          $lookup: {
+            from: 'relationships',
+            let: { userId: { $toString: '$_id' } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $or: [
+                      { $eq: ['$userA', '$$userId'] },
+                      { $eq: ['$userB', '$$userId'] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'relationship',
+          },
+        },
+        {
+          $project: {
+            id: '$_id',
+            _id: 0,
+            firstName: 1,
+            lastName: 1,
+            email: 1,
+            relationship: {
+              $cond: {
+                if: { $gt: [{ $size: '$relationship' }, 0] },
+                then: { $arrayElemAt: ['$relationship.status', 0] },
+                else: 'no relationship',
               },
             },
-          ],
-        }
-      : {};
-    const users: UserDocument[] = await this.userModel
-      .find(filter)
-      .select({
-        firstName: 1,
-        lastName: 1,
-        email: 1,
-      })
+          },
+        },
+      ])
       .skip(skip)
       .limit(size)
       .sort({
         [sortBy]: orderBy.toLowerCase() === 'asc' ? 1 : -1,
       })
-      .transform((doc: any) => {
-        return doc.map(MongooseDocumentTransformer);
-      })
       .exec();
+
     return {
       data: users,
       metadata: {
+        page,
+        size,
         count: users.length,
       },
     };
