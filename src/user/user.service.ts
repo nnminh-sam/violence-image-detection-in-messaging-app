@@ -11,8 +11,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
-import { Relationship } from 'src/relationship/entities/relationship.entity';
-import RelationshipStatus from 'src/relationship/entities/relationship-temp.enum';
 
 @Injectable()
 export class UserService {
@@ -97,7 +95,7 @@ export class UserService {
     const totalPage: number = Math.ceil(totalDocuments / size);
 
     const skip: number = (page - 1) * size;
-    const data = await this.userModel
+    const data: any[] = await this.userModel
       .aggregate([
         { $match: { ...matchingConditions } },
         {

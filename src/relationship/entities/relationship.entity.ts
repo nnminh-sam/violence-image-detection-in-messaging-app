@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import RelationshipStatus from './relationship-temp.enum';
+import RelationshipStatus from './relationship.enum';
 import { User } from 'src/user/entities/user.entity';
 import { Conversation } from 'src/conversation/entities/conversation.entity';
 

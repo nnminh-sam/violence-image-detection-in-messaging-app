@@ -1,5 +1,5 @@
 import { IsEnum, IsMongoId, IsNotEmpty } from 'class-validator';
-import RelationshipStatus from '../entities/relationship-temp.enum';
+import RelationshipStatus from '../entities/relationship.enum';
 
 export class CreateRelationshipDto {
   @IsNotEmpty({

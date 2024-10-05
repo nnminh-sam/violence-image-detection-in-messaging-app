@@ -18,7 +18,7 @@ import {
 import { Model } from 'mongoose';
 import { UserService } from 'src/user/user.service';
 import { BlockUserDto } from './dto/block-user.dto';
-import RelationshipStatus from './entities/relationship-temp.enum';
+import RelationshipStatus from './entities/relationship.enum';
 import { User } from 'src/user/entities/user.entity';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 import { ConversationService } from 'src/conversation/conversation.service';
