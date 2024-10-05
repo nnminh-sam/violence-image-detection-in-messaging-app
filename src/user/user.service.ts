@@ -12,7 +12,7 @@ import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 import { Relationship } from 'src/relationship/entities/relationship.entity';
-import RelationshipStatus from 'src/relationship/entities/relationship.enum';
+import RelationshipStatus from 'src/relationship/entities/relationship-temp.enum';
 
 @Injectable()
 export class UserService {
