@@ -64,6 +64,58 @@ export class UserService {
       .exec()) as User;
   }
 
+  async findUsers(
+    requestedUserId: string,
+    page: number,
+    size: number,
+    sortBy: string,
+    orderBy: string,
+    searchValue: string,
+  ) {
+    const skip: number = (page - 1) * size;
+    const filter = searchValue
+      ? {
+          $and: [
+            {
+              $or: [
+                { email: { $regex: searchValue, $options: 'i' } },
+                { username: { $regex: searchValue, $options: 'i' } },
+                { firstName: { $regex: searchValue, $options: 'i' } },
+                { lastName: { $regex: searchValue, $options: 'i' } },
+              ],
+            },
+            {
+              _id: {
+                $ne: requestedUserId,
+              },
+            },
+          ],
+        }
+      : {};
+    const users: UserDocument[] = await this.userModel
+      .find(filter)
+      .select({
+        firstName: 1,
+        lastName: 1,
+        email: 1,
+      })
+      .skip(skip)
+      .limit(size)
+      .sort({
+        [sortBy]: orderBy.toLowerCase() === 'asc' ? 1 : -1,
+      })
+      .transform((doc: any) => {
+        return doc.map(MongooseDocumentTransformer);
+      })
+      .exec();
+    return {
+      data: users,
+      metadata: {
+        count: users.length,
+      },
+    };
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user: User = await this.findById(id);
     if (!user) throw new NotFoundException('User not found');

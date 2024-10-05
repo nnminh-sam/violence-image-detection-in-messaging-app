@@ -7,6 +7,7 @@ import {
   UseGuards,
   Req,
   NotFoundException,
+  Query,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -29,6 +30,25 @@ export class UserController {
     const response: User = await this.userService.findById(user.id);
     if (!response) throw new NotFoundException('User not found');
     return response;
+  }
+
+  @Get()
+  async find(
+    @RequestedUser() user: any,
+    @Query('page') page: number,
+    @Query('size') size: number,
+    @Query('sortBy') sortBy: string,
+    @Query('orderBy') orderBy: string,
+    @Query('searchValue') searchValue: string,
+  ) {
+    return await this.userService.findUsers(
+      user.id,
+      page || 1,
+      size || 10,
+      sortBy || 'firstName',
+      orderBy || 'asc',
+      searchValue,
+    );
   }
 
   @Patch()
