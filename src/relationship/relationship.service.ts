@@ -40,43 +40,48 @@ export class RelationshipService {
 
   async create(
     requestedUserId: string,
-    createRelationshipDto: CreateRelationshipDto,
+    payload: CreateRelationshipDto,
   ): Promise<PopulatedRelationship> {
-    if (createRelationshipDto.userA === createRelationshipDto.userB)
+    if (payload.userA === payload.userB) {
       throw new BadRequestException('User A and user B must be different');
+    }
 
-    const userA: User = await this.userService.findById(
-      createRelationshipDto.userA,
-    );
+    const userA: User = await this.userService.findById(payload.userA);
     if (!userA) throw new BadRequestException('User A not found');
 
-    const userB: User = await this.userService.findById(
-      createRelationshipDto.userB,
-    );
+    const userB: User = await this.userService.findById(payload.userB);
     if (!userB) throw new BadRequestException('User B not found');
 
     const existedRelationship: Relationship = await this.findByUserIds(
       userA.id,
       userB.id,
     );
-    if (existedRelationship)
+    if (
+      existedRelationship &&
+      existedRelationship.status !== RelationshipStatus.AWAY
+    ) {
       throw new BadRequestException('Relationship existed');
+    }
 
     if (
-      createRelationshipDto.status !== RelationshipStatus.REQUEST_USER_A &&
-      createRelationshipDto.status !== RelationshipStatus.REQUEST_USER_B
+      payload.status !== RelationshipStatus.REQUEST_USER_A &&
+      payload.status !== RelationshipStatus.REQUEST_USER_B
     ) {
       throw new BadRequestException(
         'Relationship status must be REQUEST_USER_A or REQUEST_USER_B',
       );
     }
 
+    this.relationshipModel
+      .createCollection()
+      .then(() => this.relationshipModel.startSession());
+
     try {
       const data: RelationshipDocument = await new this.relationshipModel({
-        ...(createRelationshipDto.userA <= createRelationshipDto.userB
+        ...(payload.userA <= payload.userB
           ? { userA: userA.id, userB: userB.id }
           : { userA: userB.id, userB: userA.id }),
-        status: createRelationshipDto.status,
+        status: payload.status,
       }).save();
 
       return await this.findById(data._id.toString());
