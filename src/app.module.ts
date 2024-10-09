@@ -8,6 +8,7 @@ import { MessageModule } from './message/message.module';
 import { AuthModule } from './auth/auth.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { EventModule } from './event/event.module';
+import { FileUploadModule } from './file-upload/file-upload.module';
 import mongoose from 'mongoose';
 import * as dotenv from 'dotenv';
 
@@ -33,6 +34,7 @@ const DATABASE_CONNECTION_STRING = `mongodb://${envVar.DATABASE_HOST}:${envVar.D
     MessageModule,
     AuthModule,
     EventModule,
+    FileUploadModule,
   ],
   controllers: [],
 })
