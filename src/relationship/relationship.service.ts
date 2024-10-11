@@ -25,6 +25,8 @@ import { ConversationService } from 'src/conversation/conversation.service';
 import { PopulatedConversation } from 'src/conversation/entities/conversation.entity';
 import { MembershipService } from 'src/membership/membership.service';
 import { MembershipRole } from 'src/membership/entities/membership-role.enum';
+import { ConversationType } from 'src/conversation/entities/conversation-type.enum';
+import { PopulatedMembership } from 'src/membership/entities/membership.entity';
 
 @Injectable()
 export class RelationshipService {
@@ -38,28 +40,26 @@ export class RelationshipService {
     private readonly membershipService: MembershipService,
   ) {}
 
-  async create(
-    requestedUserId: string,
-    payload: CreateRelationshipDto,
-  ): Promise<PopulatedRelationship> {
+  async create(payload: CreateRelationshipDto): Promise<PopulatedRelationship> {
     if (payload.userA === payload.userB) {
       throw new BadRequestException('User A and user B must be different');
     }
 
     const userA: User = await this.userService.findById(payload.userA);
-    if (!userA) throw new BadRequestException('User A not found');
+    if (!userA) {
+      throw new BadRequestException('User A not found');
+    }
 
     const userB: User = await this.userService.findById(payload.userB);
-    if (!userB) throw new BadRequestException('User B not found');
+    if (!userB) {
+      throw new BadRequestException('User B not found');
+    }
 
     const existedRelationship: Relationship = await this.findByUserIds(
       userA.id,
       userB.id,
     );
-    if (
-      existedRelationship &&
-      existedRelationship.status !== RelationshipStatus.AWAY
-    ) {
+    if (existedRelationship) {
       throw new BadRequestException('Relationship existed');
     }
 
@@ -72,10 +72,6 @@ export class RelationshipService {
       );
     }
 
-    this.relationshipModel
-      .createCollection()
-      .then(() => this.relationshipModel.startSession());
-
     try {
       const data: RelationshipDocument = await new this.relationshipModel({
         ...(payload.userA <= payload.userB
@@ -86,7 +82,7 @@ export class RelationshipService {
 
       return await this.findById(data._id.toString());
     } catch (error) {
-      this.logger.error(error);
+      this.logger.fatal(error);
       throw new InternalServerErrorException(
         'Failed to create relationship',
         error,
@@ -115,24 +111,6 @@ export class RelationshipService {
       .exec()) as PopulatedRelationship;
   }
 
-  async findMyRelationship(
-    relationshipId: string,
-    requestedUser: string,
-  ): Promise<PopulatedRelationship> {
-    const relationship: PopulatedRelationship =
-      await this.findById(relationshipId);
-    if (!relationship) throw new NotFoundException('Relationship not found');
-
-    const isUserRelationship: boolean =
-      (relationship.userA as User).id === requestedUser ||
-      (relationship.userB as User).id === requestedUser;
-
-    if (!isUserRelationship)
-      throw new UnauthorizedException('Unauthorized user');
-
-    return relationship;
-  }
-
   async findByUserIds(userAId: string, userBId: string): Promise<Relationship> {
     return (await this.relationshipModel
       .findOne({
@@ -151,23 +129,43 @@ export class RelationshipService {
       .exec()) as Relationship;
   }
 
-  async findAll(
+  async findMyRelationshipById(
+    relationshipId: string,
+    requestedUser: string,
+  ): Promise<PopulatedRelationship> {
+    const relationship: PopulatedRelationship =
+      await this.findById(relationshipId);
+    if (!relationship) throw new NotFoundException('Relationship not found');
+
+    const isUserRelationship: boolean =
+      (relationship.userA as User).id === requestedUser ||
+      (relationship.userB as User).id === requestedUser;
+
+    if (!isUserRelationship)
+      throw new UnauthorizedException('Unauthorized user');
+
+    return relationship;
+  }
+
+  async findMyRelationships(
     userId: string,
     page: number,
     size: number,
     sortBy: string,
     orderBy: string,
-    status: string,
   ) {
+    const filter: any = {
+      $or: [{ userA: userId }, { userB: userId }],
+      status: { $eq: status.toUpperCase() },
+      blockedAt: null,
+    };
+    const totalDocument: number = await this.relationshipModel.countDocuments(
+      ...filter,
+    );
+    const totalPage: number = Math.ceil(totalDocument / size);
     const skipValue: number = (page - 1) * size;
     const data: PopulatedRelationship[] = (await this.relationshipModel
-      .find({
-        $or: [{ userA: userId }, { userB: userId }],
-        status: {
-          $eq: status.toUpperCase(),
-        },
-        blockedAt: null,
-      })
+      .find({ ...filter })
       .populate({
         path: 'userA',
         select: '-__v -password -deletedAt',
@@ -178,7 +176,7 @@ export class RelationshipService {
         select: '-__v -password -deletedAt',
         transform: MongooseDocumentTransformer,
       })
-      .select('-__v -deletedAt')
+      .select('-__v')
       .limit(size)
       .skip(skipValue)
       .sort({
@@ -195,74 +193,65 @@ export class RelationshipService {
         pagination: {
           page,
           size,
+          totalPage,
         },
         count: data.length,
       },
     };
   }
 
-  async confirmFriendship(requestedUserId: string, relationshipId: string) {
+  async acceptRelationshipRequest(
+    requestedUserId: string,
+    relationshipId: string,
+  ) {
     const relationship: PopulatedRelationship =
       await this.findById(relationshipId);
     if (!relationship) {
       throw new NotFoundException('Relationship not found');
     }
-
     if (relationship.status === RelationshipStatus.FRIENDS) {
       throw new BadRequestException('Users are already friends');
     }
 
     const userA: User = relationship.userA;
     const userB: User = relationship.userB;
-    const hostId: string = requestedUserId;
+    const host: string = requestedUserId;
 
     try {
-      const privateConversationPayload: CreateConversationDto = {
-        name: `Private conversation [${relationshipId}]`,
-        description: `Private conversation [${relationshipId}]`,
-        createdBy: hostId,
-        host: hostId,
+      const payload: CreateConversationDto = {
+        name: `Direct conversation [${relationshipId}]`,
+        description: `Direct conversation [${relationshipId}]`,
+        createdBy: host,
+        host,
+        type: ConversationType.DIRECT,
       };
-      const privateConversation: PopulatedConversation =
-        await this.conversationService.create(privateConversationPayload);
+      const directConversation: PopulatedConversation =
+        await this.conversationService.create(payload);
 
-      const userAMembership = await this.membershipService.create(
-        requestedUserId,
-        {
+      const userAMembership: PopulatedMembership =
+        await this.membershipService.create(requestedUserId, {
           user: userA.id,
-          conversation: privateConversation.id,
-          role:
-            userA.id === requestedUserId
-              ? MembershipRole.HOST
-              : MembershipRole.MEMBER,
-        },
-      );
+          conversation: directConversation.id,
+          role: MembershipRole.MEMBER,
+        });
 
-      const userBMembership = await this.membershipService.create(
-        requestedUserId,
-        {
+      const userBMembership: PopulatedMembership =
+        await this.membershipService.create(requestedUserId, {
           user: userB.id,
-          conversation: privateConversation.id,
-          role:
-            userB.id === requestedUserId
-              ? MembershipRole.HOST
-              : MembershipRole.MEMBER,
-        },
-      );
+          conversation: directConversation.id,
+          role: MembershipRole.MEMBER,
+        });
 
       const data: RelationshipDocument = await this.relationshipModel
         .findByIdAndUpdate(
           relationshipId,
-          {
-            privateConversation: privateConversation.id,
-            status: RelationshipStatus.FRIENDS,
-          },
+          { status: RelationshipStatus.FRIENDS },
           { new: true },
         )
         .exec();
       return await this.findById(data._id.toString());
     } catch (error) {
-      console.log('error:', error);
+      this.logger.fatal(error);
       throw new InternalServerErrorException(
         'Failed to update relationship',
         error,
@@ -273,10 +262,18 @@ export class RelationshipService {
   async update(
     id: string,
     updateRelationshipDto: UpdateRelationshipDto,
-    requestedUser: string,
+    requestedUserId: string,
   ): Promise<PopulatedRelationship> {
     const relationship: PopulatedRelationship = await this.findById(id);
     if (!relationship) throw new NotFoundException('Relationship not found');
+
+    const relationshipMemberIds = [
+      (relationship.userA as User).id,
+      (relationship.userB as User).id,
+    ];
+    if (!relationshipMemberIds.includes(requestedUserId)) {
+      throw new UnauthorizedException('Unauthorized user');
+    }
 
     try {
       const data: RelationshipDocument = await this.relationshipModel
@@ -285,6 +282,7 @@ export class RelationshipService {
 
       return await this.findById(data._id.toString());
     } catch (error) {
+      this.logger.fatal(error);
       throw new InternalServerErrorException(
         'Failed to update relationship',
         error,
@@ -301,8 +299,9 @@ export class RelationshipService {
     );
     if (!blocker) throw new NotFoundException('Block by user not found');
 
-    if (blockUserDto.blockedBy !== requestedUser)
+    if (blockUserDto.blockedBy !== requestedUser) {
       throw new UnauthorizedException('Unauthorized user');
+    }
 
     const targetUser: User = await this.userService.findById(
       blockUserDto.targetUser,
@@ -314,8 +313,9 @@ export class RelationshipService {
       blockUserDto.targetUser,
     );
     if (!relationship) throw new NotFoundException('Relationship not found');
-    if (relationship.blockedAt)
+    if (relationship.blockedAt) {
       throw new BadRequestException('Relationship is already blocked');
+    }
 
     try {
       const status: RelationshipStatus =
@@ -327,7 +327,31 @@ export class RelationshipService {
         .exec();
       return await this.findById(data._id.toString());
     } catch (error) {
+      this.logger.fatal(error);
       throw new InternalServerErrorException('Failed to block user', error);
+    }
+  }
+
+  async delete(relationshipId: string, requestedUserId: string) {
+    const relationship: PopulatedRelationship =
+      await this.findById(relationshipId);
+    if (!relationship) {
+      throw new NotFoundException('Relationship not found');
+    }
+
+    const relationshipMemberIds: string[] = [
+      (relationship.userA as User).id,
+      (relationship.userB as User).id,
+    ];
+    if (!relationshipMemberIds.includes(requestedUserId)) {
+      throw new UnauthorizedException('Unauthorized user');
+    }
+
+    try {
+      await this.relationshipModel.findByIdAndDelete(relationshipId).exec();
+    } catch (error) {
+      this.logger.fatal(error);
+      throw new InternalServerErrorException('Failed to delete relationship');
     }
   }
 }

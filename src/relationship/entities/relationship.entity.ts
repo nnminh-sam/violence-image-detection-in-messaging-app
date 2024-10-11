@@ -2,7 +2,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import RelationshipStatus from './relationship.enum';
 import { User } from 'src/user/entities/user.entity';
-import { Conversation } from 'src/conversation/entities/conversation.entity';
 
 @Schema({ timestamps: true })
 export class Relationship {
@@ -24,14 +23,6 @@ export class Relationship {
 
   @Prop({ required: true, enum: RelationshipStatus })
   status: RelationshipStatus;
-
-  @Prop({
-    type: 'String',
-    ref: Conversation.name,
-    required: false,
-    default: null,
-  })
-  privateConversation: string;
 
   @Prop({ default: null })
   blockedAt: Date;

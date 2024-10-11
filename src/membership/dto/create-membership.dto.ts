@@ -1,4 +1,4 @@
-import { IsEnum, IsMongoId, IsNotEmpty } from 'class-validator';
+import { IsEnum, IsMongoId, IsNotEmpty, IsOptional } from 'class-validator';
 import { MembershipRole } from '../entities/membership-role.enum';
 
 export class CreateMembershipDto {
@@ -13,4 +13,8 @@ export class CreateMembershipDto {
   @IsNotEmpty()
   @IsEnum(MembershipRole)
   role: MembershipRole;
+
+  @IsOptional()
+  @IsMongoId()
+  partner?: string;
 }

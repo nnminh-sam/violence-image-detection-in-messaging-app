@@ -4,6 +4,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { CreateMembershipDto } from './dto/create-membership.dto';
 import { UpdateMembershipDto } from './dto/update-membership.dto';
@@ -23,9 +24,12 @@ import {
 } from 'src/conversation/entities/conversation.entity';
 import { User } from 'src/user/entities/user.entity';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
+import { ConversationType } from 'src/conversation/entities/conversation-type.enum';
 
 @Injectable()
 export class MembershipService {
+  private logger: Logger = new Logger(MembershipService.name);
+
   constructor(
     @InjectModel(Membership.name)
     private membershipModel: Model<Membership>,
@@ -36,7 +40,7 @@ export class MembershipService {
   ) {}
 
   async create(
-    hostId: string,
+    requestUserId: string,
     createMembershipDto: CreateMembershipDto,
   ): Promise<PopulatedMembership> {
     const user: User = await this.userService.findById(
@@ -46,28 +50,44 @@ export class MembershipService {
 
     const conversation: PopulatedConversation =
       await this.conversationService.findById(createMembershipDto.conversation);
-    if (!conversation) throw new NotFoundException('Conversation not found');
-    if ((conversation.host as User).id !== hostId)
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+    if ((conversation.host as User).id !== requestUserId) {
       throw new UnauthorizedException(
         'Request user must be the host of this conversation',
       );
+    }
 
     const membership: PopulatedMembership =
       await this.findByUserIdAndConversationId(
         createMembershipDto.user,
         createMembershipDto.conversation,
       );
-    if (membership)
+    if (membership) {
       throw new BadRequestException('Conversation membership existed');
+    }
+
+    const membershipData: any = {
+      ...createMembershipDto,
+      status: MembershipStatus.PARTICIPATING,
+    };
+
+    const partner: User = await this.userService.findById(
+      createMembershipDto.partner,
+    );
+    if (partner && conversation.type === ConversationType.DIRECT) {
+      membershipData.partner = partner.id;
+    }
 
     try {
       const data: MembershipDocument = await new this.membershipModel({
-        ...createMembershipDto,
-        status: MembershipStatus.PARTICIPATING,
+        ...membershipData,
       }).save();
 
       return await this.findById(data._id.toString());
     } catch (error) {
+      this.logger.fatal(error);
       throw new InternalServerErrorException(
         'Failed to create conversation member',
         error,
@@ -87,6 +107,11 @@ export class MembershipService {
       })
       .populate({
         path: 'user',
+        select: '-__v -deletedAt -password',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'partner',
         select: '-__v -deletedAt -password',
         transform: MongooseDocumentTransformer,
       })
@@ -136,12 +161,18 @@ export class MembershipService {
       await this.findByUserIdAndConversationId(requestedUser, conversationId);
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
+    const filter: any = {
+      conversation: conversationId,
+      status: MembershipStatus.PARTICIPATING,
+    };
+
+    const totalDocument: number =
+      await this.membershipModel.countDocuments(filter);
+    const totalPage: number = Math.ceil(totalDocument / size);
+
     const skip: number = (page - 1) * size;
     const data = (await this.membershipModel
-      .find({
-        conversation: conversationId,
-        status: MembershipStatus.PARTICIPATING,
-      })
+      .find(filter)
       .populate({
         path: 'conversation',
         select: '-__v -deletedAt',
@@ -149,6 +180,11 @@ export class MembershipService {
       })
       .populate({
         path: 'user',
+        select: '-__v -deletedAt -password',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'partner',
         select: '-__v -deletedAt -password',
         transform: MongooseDocumentTransformer,
       })
@@ -168,6 +204,7 @@ export class MembershipService {
         pagination: {
           page,
           size,
+          totalPage,
         },
         count: data.length,
       },
@@ -181,12 +218,18 @@ export class MembershipService {
     sortBy: string,
     orderBy: string,
   ) {
+    const filter: any = {
+      user: userId,
+      status: MembershipStatus.PARTICIPATING,
+    };
+
+    const totalDocument: number =
+      await this.membershipModel.countDocuments(filter);
+    const totalPage: number = Math.ceil(totalDocument / size);
+
     const skip: number = (page - 1) * size;
     const data = (await this.membershipModel
-      .find({
-        user: userId,
-        status: MembershipStatus.PARTICIPATING,
-      })
+      .find(filter)
       .populate({
         path: 'conversation',
         select: '-__v -deletedAt',
@@ -209,6 +252,7 @@ export class MembershipService {
         pagination: {
           page,
           size,
+          totalPage,
         },
         count: data.length,
       },
@@ -240,6 +284,7 @@ export class MembershipService {
         .exec();
       return await this.findById(data._id.toString());
     } catch (error) {
+      this.logger.fatal(error);
       throw new InternalServerErrorException(
         'Failed to update conversation membership',
         error,
@@ -275,6 +320,7 @@ export class MembershipService {
         status: MembershipStatus.REMOVED,
       };
     } catch (error) {
+      this.logger.fatal(error);
       throw new InternalServerErrorException(
         'Failed to remove conversation membership',
         error,

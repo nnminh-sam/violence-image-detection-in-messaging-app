@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { User } from 'src/user/entities/user.entity';
+import { ConversationType } from './conversation-type.enum';
 
 @Schema({ timestamps: true })
 export class Conversation {
@@ -25,6 +26,9 @@ export class Conversation {
     required: true,
   })
   host: string;
+
+  @Prop({ required: true, default: 'DIRECT' })
+  type: ConversationType;
 
   @Prop({ default: null })
   deletedAt: Date;

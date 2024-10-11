@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { RelationshipService } from './relationship.service';
 import { CreateRelationshipDto } from './dto/create-relationship.dto';
@@ -29,12 +30,8 @@ export class RelationshipController {
   @Post()
   async create(
     @Body() createRelationshipDto: CreateRelationshipDto,
-    @RequestedUser() user: any,
   ): Promise<PopulatedRelationship> {
-    return await this.relationshipService.create(
-      user.id,
-      createRelationshipDto,
-    );
+    return await this.relationshipService.create(createRelationshipDto);
   }
 
   @Get('/my')
@@ -44,15 +41,24 @@ export class RelationshipController {
     @Query('size') size: number,
     @Query('sortBy') sortBy: string,
     @Query('orderBy') orderBy: string,
-    @Query('status') status: string,
   ) {
-    return await this.relationshipService.findAll(
+    return await this.relationshipService.findMyRelationships(
       user.id,
       page || 1,
       size || 10,
       sortBy || 'createdAt',
       orderBy || 'desc',
-      status || 'friends',
+    );
+  }
+
+  @Get('accept/:relationshipId')
+  async confirmFriend(
+    @RequestedUser() user: any,
+    @Param('relationshipId') relationshipId: string,
+  ) {
+    return await this.relationshipService.acceptRelationshipRequest(
+      user.id,
+      relationshipId,
     );
   }
 
@@ -61,21 +67,10 @@ export class RelationshipController {
     @RequestedUser() user: any,
     @Param('id') id: string,
   ): Promise<PopulatedRelationship> {
-    return await this.relationshipService.findMyRelationship(id, user.id);
+    return await this.relationshipService.findMyRelationshipById(id, user.id);
   }
 
-  @Get('confirm-friendship/:relationshipId')
-  async confirmFriend(
-    @RequestedUser() user: any,
-    @Param('relationshipId') relationshipId: string,
-  ) {
-    return await this.relationshipService.confirmFriendship(
-      user.id,
-      relationshipId,
-    );
-  }
-
-  @Patch('block-user')
+  @Patch('block')
   async blockUser(
     @RequestedUser() user: any,
     @Body() blockUserDto: BlockUserDto,
@@ -94,5 +89,10 @@ export class RelationshipController {
       updateRelationshipDto,
       user.id,
     );
+  }
+
+  @Delete(':id')
+  async delete(@RequestedUser() user: any, @Param('id') id: string) {
+    return await this.relationshipService.delete(id, user.id);
   }
 }

@@ -1,10 +1,11 @@
 import {
+  IsEnum,
   IsMongoId,
   IsNotEmpty,
-  IsNotEmptyObject,
   IsString,
   Length,
 } from 'class-validator';
+import { ConversationType } from '../entities/conversation-type.enum';
 
 export class CreateConversationDto {
   @IsNotEmpty()
@@ -28,4 +29,7 @@ export class CreateConversationDto {
   @IsNotEmpty()
   @IsMongoId()
   host: string;
+
+  @IsEnum(ConversationType)
+  type: string;
 }

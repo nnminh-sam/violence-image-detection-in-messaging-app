@@ -28,6 +28,14 @@ export class Membership {
 
   @Prop({ default: null, nullable: true })
   status: MembershipStatus;
+
+  @Prop({
+    type: String,
+    ref: User.name,
+    required: false,
+    default: null,
+  })
+  partner: string;
 }
 
 export type MembershipDocument = Membership & Document;
@@ -35,6 +43,7 @@ export type MembershipDocument = Membership & Document;
 export type PopulatedMembership = Membership & {
   user: User;
   conversation: Conversation;
+  partner: User;
 };
 
 export const MembershipSchema = SchemaFactory.createForClass(Membership);

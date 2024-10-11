@@ -4,7 +4,6 @@ enum RelationshipStatus {
   FRIENDS = 'FRIENDS',
   BLOCKED_USER_A = 'BLOCKED_USER_A',
   BLOCKED_USER_B = 'BLOCKED_USER_B',
-  AWAY = 'AWAY',
 }
 
 export default RelationshipStatus;
