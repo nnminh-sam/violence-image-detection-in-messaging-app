@@ -72,13 +72,26 @@ export class RelationshipService {
       );
     }
 
+    const relationshipData: any =
+      payload.userA <= payload.userB
+        ? {
+            userA: userA.id,
+            userB: userB.id,
+            status: payload.status,
+          }
+        : {
+            userA: userB.id,
+            userB: userA.id,
+            status:
+              payload.status === RelationshipStatus.REQUEST_USER_A
+                ? RelationshipStatus.REQUEST_USER_B
+                : RelationshipStatus.REQUEST_USER_A,
+          };
+
     try {
-      const data: RelationshipDocument = await new this.relationshipModel({
-        ...(payload.userA <= payload.userB
-          ? { userA: userA.id, userB: userB.id }
-          : { userA: userB.id, userB: userA.id }),
-        status: payload.status,
-      }).save();
+      const data: RelationshipDocument = await new this.relationshipModel(
+        relationshipData,
+      ).save();
 
       return await this.findById(data._id.toString());
     } catch (error) {
@@ -156,16 +169,14 @@ export class RelationshipService {
   ) {
     const filter: any = {
       $or: [{ userA: userId }, { userB: userId }],
-      status: { $eq: status.toUpperCase() },
       blockedAt: null,
     };
-    const totalDocument: number = await this.relationshipModel.countDocuments(
-      ...filter,
-    );
+    const totalDocument: number =
+      await this.relationshipModel.countDocuments(filter);
     const totalPage: number = Math.ceil(totalDocument / size);
     const skipValue: number = (page - 1) * size;
     const data: PopulatedRelationship[] = (await this.relationshipModel
-      .find({ ...filter })
+      .find(filter)
       .populate({
         path: 'userA',
         select: '-__v -password -deletedAt',
