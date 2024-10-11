@@ -244,6 +244,7 @@ export class RelationshipService {
           user: userA.id,
           conversation: directConversation.id,
           role: MembershipRole.MEMBER,
+          partner: userB.id.toString(),
         });
 
       const userBMembership: PopulatedMembership =
@@ -251,6 +252,7 @@ export class RelationshipService {
           user: userB.id,
           conversation: directConversation.id,
           role: MembershipRole.MEMBER,
+          partner: userA.id.toString(),
         });
 
       const data: RelationshipDocument = await this.relationshipModel
