@@ -235,6 +235,11 @@ export class MembershipService {
         select: '-__v -deletedAt',
         transform: MongooseDocumentTransformer,
       })
+      .populate({
+        path: 'partner',
+        select: '-__v -deletedAt -password',
+        transform: MongooseDocumentTransformer,
+      })
       .select('-__v -deletedAt')
       .limit(size)
       .skip(skip)
