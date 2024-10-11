@@ -8,6 +8,12 @@ export class ResponseTransformInterceptor implements NestInterceptor {
   ): Observable<any> | Promise<Observable<any>> {
     return next.handle().pipe(
       map((rawData) => {
+        if (!rawData) {
+          return {
+            timestamp: new Date().toISOString(),
+          };
+        }
+
         let { data, metadata, ...rest } = rawData;
 
         if (!data && !metadata) {
