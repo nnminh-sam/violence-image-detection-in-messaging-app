@@ -33,7 +33,7 @@ export class MessageService {
 
   constructor(
     @InjectModel(Message.name)
-    private readonly MessageModel: Model<Message>,
+    private readonly messageModel: Model<Message>,
 
     private readonly userService: UserService,
 
@@ -79,7 +79,7 @@ export class MessageService {
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
     try {
-      const createdMessage = await new this.MessageModel({
+      const createdMessage = await new this.messageModel({
         ...createMessageDto,
         createdAt: new Date(),
       }).save();
@@ -117,9 +117,11 @@ export class MessageService {
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
     const skip: number = (page - 1) * size;
-    const data: PopulatedMessage[] = (await this.MessageModel.find({
-      deletedAt: null,
-    })
+    const data: PopulatedMessage[] = (await this.messageModel
+      .find({
+        conversation: conversationId,
+        deletedAt: null,
+      })
       .populate({
         path: 'sendBy',
         select: '-__v -password -deletedAt',
@@ -137,9 +139,10 @@ export class MessageService {
         createdAt: -1,
       })
       .transform((doc: any) => {
-        return MongooseDocumentTransformer(doc);
+        return doc.map(MongooseDocumentTransformer);
       })
       .exec()) as PopulatedMessage[];
+    console.log('data:', data);
     return {
       data,
       metadata: {
@@ -153,10 +156,11 @@ export class MessageService {
   }
 
   async findById(id: string): Promise<PopulatedMessage> {
-    return (await this.MessageModel.findOne({
-      _id: id,
-      deletedAt: null,
-    })
+    return (await this.messageModel
+      .findOne({
+        _id: id,
+        deletedAt: null,
+      })
       .populate({
         path: 'sendBy',
         select: '-__v -password -deletedAt',
@@ -186,11 +190,9 @@ export class MessageService {
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
     try {
-      const data: MessageDocument = await this.MessageModel.findByIdAndUpdate(
-        id,
-        { ...updateMessageDto },
-        { new: true },
-      ).exec();
+      const data: MessageDocument = await this.messageModel
+        .findByIdAndUpdate(id, { ...updateMessageDto }, { new: true })
+        .exec();
       return await this.findById(data._id.toString());
     } catch (error) {
       throw new InternalServerErrorException(
@@ -211,11 +213,9 @@ export class MessageService {
 
     try {
       const timestamp: Date = new Date();
-      const data: MessageDocument = await this.MessageModel.findByIdAndUpdate(
-        id,
-        { deletedAt: timestamp },
-        { new: true },
-      ).exec();
+      const data: MessageDocument = await this.messageModel
+        .findByIdAndUpdate(id, { deletedAt: timestamp }, { new: true })
+        .exec();
       return {
         ...message,
         deletedAt: timestamp,
