@@ -21,7 +21,7 @@ export class SocketGuard implements CanActivate {
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
     const client: Socket = context.switchToWs().getClient();
-    const token: string = client.handshake.headers.bearer as string;
+    const token: string = client.handshake.headers.authorization as string;
     if (!token) throw new WsException('Unauthorized connection');
 
     try {

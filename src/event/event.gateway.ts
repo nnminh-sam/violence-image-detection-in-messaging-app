@@ -11,7 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { EventService } from './event.service';
 import { JoinRoomDto } from './dto/join-room-payload.dto';
 import { ClientInfo } from './types/client-info';
-import { UseGuards } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
 import { SocketGuard } from './guard/socket-jwt.guard';
 import { NewMessage } from './dto/new-message.dto';
 import { ServerToClientEvents } from './types/server-to-client-events';
@@ -24,7 +24,8 @@ const ALLOWED_ORIGIN: string =
 
 @WebSocketGateway(SOCKET_PORT, {
   cors: {
-    origin: ALLOWED_ORIGIN,
+    origin: 'http://localhost:5173',
+    allowedHeaders: ['Authorization', 'Content-Type'],
   },
 })
 export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -36,7 +37,14 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleConnection(client: Socket, ...args: any[]) {
     const connectedClient: ClientInfo =
       await this.EventService.connectToSocket(client);
-    if (!connectedClient) return;
+    this.server.emit('connectionStatus', {
+      client: client.id,
+      status: connectedClient ? 'success' : 'failed',
+      timestamp: Date.now().toString(),
+    });
+    if (!connectedClient) {
+      client.disconnect();
+    }
   }
 
   async handleDisconnect(client: Socket) {
@@ -53,11 +61,18 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { roomId } = payload;
     this.EventService.joinRoom(client, roomId);
+    this.server.emit('joinRoomStatus', {
+      client: client.id,
+      room: roomId,
+      status: 'success',
+      timestamp: Date.now().toString(),
+    });
   }
 
   @UseGuards(SocketGuard)
   sendNewMessage(payload: NewMessage) {
     const { room } = payload;
+    console.log(`emitting message to room ${room} with payload:`, payload);
     this.server.to(room).emit('newMessage', payload);
   }
 }

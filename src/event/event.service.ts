@@ -17,7 +17,7 @@ export class EventService {
   ) {}
 
   private getAuthenticationToken(client: Socket): string {
-    return client.handshake.headers.bearer as string;
+    return client.handshake.headers.authorization as string;
   }
 
   private async decodeToken(token: string) {
