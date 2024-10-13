@@ -16,6 +16,8 @@ import { SocketGuard } from './guard/socket-jwt.guard';
 import { NewMessage } from './dto/new-message.dto';
 import { ServerToClientEvents } from './types/server-to-client-events';
 import * as dotenv from 'dotenv';
+import { PopulatedMessage } from 'src/message/entities/message.entity';
+import { Conversation } from 'src/conversation/entities/conversation.entity';
 dotenv.config();
 
 const SOCKET_PORT: number = +process.env.SOCKET_PORT;
@@ -70,8 +72,10 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @UseGuards(SocketGuard)
-  sendNewMessage(payload: NewMessage) {
-    const { room } = payload;
+  sendNewMessage(payload: PopulatedMessage) {
+    const { conversation } = payload;
+    console.log('payload:', payload);
+    const room: string = (conversation as Conversation).id.toString();
     console.log(`emitting message to room ${room} with payload:`, payload);
     this.server.to(room).emit('newMessage', payload);
   }

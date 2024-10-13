@@ -84,15 +84,21 @@ export class MessageService {
         createdAt: new Date(),
       }).save();
 
-      this.EventGateway.sendNewMessage({
-        sender,
-        message: createMessageDto.message,
-        room: createMessageDto.conversation,
-        timestamp: new Date(),
-        attachment: createMessageDto.attachment,
-      });
+      // this.EventGateway.sendNewMessage({
+      //   sender,
+      //   message: createMessageDto.message,
+      //   room: createMessageDto.conversation,
+      //   timestamp: new Date(),
+      //   attachment: createMessageDto.attachment,
+      // });
 
-      return await this.findById(createdMessage._id.toString());
+      const data: PopulatedMessage = await this.findById(
+        createdMessage._id.toString(),
+      );
+
+      this.EventGateway.sendNewMessage(data);
+
+      return data;
     } catch (error) {
       this.logger.error(error);
       throw new InternalServerErrorException(
@@ -142,7 +148,6 @@ export class MessageService {
         return doc.map(MongooseDocumentTransformer);
       })
       .exec()) as PopulatedMessage[];
-    console.log('data:', data);
     return {
       data,
       metadata: {
