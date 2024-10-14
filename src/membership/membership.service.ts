@@ -25,6 +25,7 @@ import {
 import { User } from 'src/user/entities/user.entity';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 import { ConversationType } from 'src/conversation/entities/conversation-type.enum';
+import { populate } from 'dotenv';
 
 @Injectable()
 export class MembershipService {

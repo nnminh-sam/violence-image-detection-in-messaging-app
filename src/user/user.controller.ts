@@ -8,6 +8,7 @@ import {
   Req,
   NotFoundException,
   Query,
+  Param,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -48,6 +49,23 @@ export class UserController {
       sortBy || 'firstName',
       orderBy || 'asc',
       searchValue,
+    );
+  }
+
+  @Get('/memberships/:conversationId')
+  async findUserConversationMembershipByConversationId(
+    @Param('conversationId') conversationId: string,
+    @Query('page') page: number,
+    @Query('size') size: number,
+    @Query('sortBy') sortBy: string,
+    @Query('orderBy') orderBy: string,
+  ) {
+    return await this.userService.findUserConversationMembershipByConversationId(
+      conversationId,
+      page || 1,
+      size || 10,
+      sortBy || 'firstName',
+      orderBy || 'asc',
     );
   }
 

@@ -164,6 +164,82 @@ export class UserService {
     };
   }
 
+  async findUserConversationMembershipByConversationId(
+    conversationId: string,
+    page: number,
+    size: number,
+    sortBy: string,
+    orderBy: string,
+  ) {
+    const totalDocument: number = await this.userModel.countDocuments();
+    const totalPage: number = Math.ceil(totalDocument / size);
+
+    const skip: number = (page - 1) * size;
+    const pipeline = [
+      {
+        $lookup: {
+          from: 'memberships',
+          let: { userId: { $toString: '$_id' } },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$user', '$$userId'] },
+                    { $eq: ['$conversation', conversationId] },
+                  ],
+                },
+              },
+            },
+            {
+              $project: {
+                id: '$_id',
+                _id: 0,
+                role: 1,
+                status: 1,
+              },
+            },
+          ],
+          as: 'membership',
+        },
+      },
+      {
+        $unwind: {
+          path: '$membership',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          id: '$_id',
+          _id: 0,
+          firstName: 1,
+          lastName: 1,
+          email: 1,
+          membership: 1,
+        },
+      },
+    ];
+    const memberships = await this.userModel
+      .aggregate(pipeline)
+      .skip(skip)
+      .sort({
+        [sortBy]: orderBy.toLowerCase() === 'asc' ? 1 : -1,
+      })
+      .exec();
+    return {
+      data: memberships,
+      metadata: {
+        pagination: {
+          page,
+          size,
+          totalPage,
+        },
+        count: memberships.length,
+      },
+    };
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user: User = await this.findById(id);
     if (!user) throw new NotFoundException('User not found');
