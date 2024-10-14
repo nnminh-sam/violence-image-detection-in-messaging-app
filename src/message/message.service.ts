@@ -84,14 +84,6 @@ export class MessageService {
         createdAt: new Date(),
       }).save();
 
-      // this.EventGateway.sendNewMessage({
-      //   sender,
-      //   message: createMessageDto.message,
-      //   room: createMessageDto.conversation,
-      //   timestamp: new Date(),
-      //   attachment: createMessageDto.attachment,
-      // });
-
       const data: PopulatedMessage = await this.findById(
         createdMessage._id.toString(),
       );
@@ -122,12 +114,18 @@ export class MessageService {
       await this.emitMembershipValidationEvent(requestedUser, conversationId);
     if (!membership) throw new UnauthorizedException('Unauthorized user');
 
+    const filter: any = {
+      conversation: conversationId,
+      deletedAt: null,
+    };
+
+    const totalDocument: number =
+      await this.messageModel.countDocuments(filter);
+    const totalPage: number = Math.ceil(totalDocument / size);
+
     const skip: number = (page - 1) * size;
     const data: PopulatedMessage[] = (await this.messageModel
-      .find({
-        conversation: conversationId,
-        deletedAt: null,
-      })
+      .find(filter)
       .populate({
         path: 'sendBy',
         select: '-__v -password -deletedAt',
@@ -154,6 +152,7 @@ export class MessageService {
         pagination: {
           page,
           size,
+          totalPage,
         },
         count: data.length,
       },
