@@ -223,6 +223,7 @@ export class UserService {
     const memberships = await this.userModel
       .aggregate(pipeline)
       .skip(skip)
+      .limit(size)
       .sort({
         [sortBy]: orderBy.toLowerCase() === 'asc' ? 1 : -1,
       })
