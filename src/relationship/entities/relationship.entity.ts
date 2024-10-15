@@ -38,5 +38,3 @@ export type PopulatedRelationship = Relationship & {
 export const RelationshipSchema = SchemaFactory.createForClass(
   Relationship,
 ).index({ userA: 1, userB: 1 }, { unique: true });
-
-RelationshipSchema.index({ privateConversation: 1 }, { unique: true });
