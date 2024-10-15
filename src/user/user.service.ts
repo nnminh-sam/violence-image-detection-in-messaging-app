@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { RegistrationPayloadDto } from 'src/auth/dto/registration-payload.dto';
 import { User, UserDocument } from './entities/user.entity';
@@ -11,9 +13,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
+import { ChangePasswordDto } from 'src/auth/dto/change-password.dto';
 
 @Injectable()
 export class UserService {
+  private logger: Logger = new Logger(UserService.name);
+
   constructor(
     @InjectModel(User.name)
     private userModel: Model<User>,
@@ -257,7 +262,45 @@ export class UserService {
         .exec();
       return this.findById(data._id.toString());
     } catch (error) {
+      this.logger.fatal(error);
       throw new InternalServerErrorException('Failed to update user', error);
+    }
+  }
+
+  async updatePassword(
+    userId: string,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<User> {
+    const user: UserDocument = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const oldPasswordMatch = bcrypt.compareSync(
+      changePasswordDto.currentPassword,
+      user.password,
+    );
+    if (!oldPasswordMatch) {
+      throw new UnauthorizedException('Wrong password');
+    }
+
+    try {
+      const hashedPassword: string = await bcrypt.hash(
+        changePasswordDto.newPassword,
+        10,
+      );
+
+      const data = await this.userModel
+        .findByIdAndUpdate(userId, {
+          password: hashedPassword,
+        })
+        .exec();
+      return await this.findById(userId);
+    } catch (error: any) {
+      this.logger.fatal(error);
+      throw new InternalServerErrorException(
+        'Failed to update user password',
+        error,
+      );
     }
   }
 
@@ -276,6 +319,7 @@ export class UserService {
         deletedAt: timestamp,
       };
     } catch (error) {
+      this.logger.fatal(error);
       throw new InternalServerErrorException('Failed to delete user', error);
     }
   }

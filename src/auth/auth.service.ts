@@ -10,6 +10,7 @@ import { RegistrationPayloadDto } from './dto/registration-payload.dto';
 import { AuthenticationResponseDto } from './dto/authentication-response.dto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -72,5 +73,9 @@ export class AuthService {
     const newUser: UserDocument =
       await this.userService.create(registrationPayload);
     return await this.login(newUser);
+  }
+
+  async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
+    return await this.userService.updatePassword(userId, changePasswordDto);
   }
 }
