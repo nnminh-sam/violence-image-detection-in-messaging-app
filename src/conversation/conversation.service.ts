@@ -69,6 +69,30 @@ export class ConversationService {
     return conversation != null ? true : false;
   }
 
+  async findOneByName(name: string): Promise<PopulatedConversation> {
+    return (await this.conversationModel
+      .findOne({
+        name: {
+          $regex: name,
+          $options: 'i',
+        },
+        deletedAt: null,
+      })
+      .populate({
+        path: 'createdBy',
+        select: '-__v -deletedAt -password',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'host',
+        select: '-__v -deletedAt -password',
+        transform: MongooseDocumentTransformer,
+      })
+      .select('-__v -deletedAt')
+      .transform(MongooseDocumentTransformer)
+      .exec()) as PopulatedConversation;
+  }
+
   async findById(id: string): Promise<PopulatedConversation> {
     return (await this.conversationModel
       .findOne({

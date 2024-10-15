@@ -8,6 +8,7 @@ import {
   Delete,
   NotFoundException,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
@@ -33,7 +34,15 @@ export class ConversationController {
     return await this.conversationService.create(createConversationDto);
   }
 
-  @Get('/:id')
+  @Get('')
+  async findOneByName(@Query('name') name: string) {
+    const conversation: PopulatedConversation =
+      await this.conversationService.findOneByName(name);
+    if (!conversation) throw new NotFoundException('Conversation not found');
+    return conversation;
+  }
+
+  @Get(':id')
   async findOne(
     @RequestedUser() user: any,
     @Param('id') id: string,
@@ -44,7 +53,7 @@ export class ConversationController {
     return conversation;
   }
 
-  @Patch('/:id')
+  @Patch(':id')
   async update(
     @RequestedUser() user: any,
     @Param('id') id: string,
@@ -57,7 +66,7 @@ export class ConversationController {
     );
   }
 
-  @Delete('/:id')
+  @Delete(':id')
   async remove(
     @RequestedUser() user: any,
     @Param('id') id: string,
