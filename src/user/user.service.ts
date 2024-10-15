@@ -48,13 +48,11 @@ export class UserService {
       .exec();
   }
 
-  async findById(id: string, getPassword?: boolean): Promise<User> {
+  async findById(id: string): Promise<User> {
     return (await this.userModel
       .findOne({ _id: id, deletedAt: null })
       .select({
-        ...(!getPassword && {
-          password: 0,
-        }),
+        password: 0,
         __v: 0,
         deletedAt: 0,
       })
