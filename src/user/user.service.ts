@@ -91,6 +91,15 @@ export class UserService {
               { username: { $regex: searchValue, $options: 'i' } },
               { firstName: { $regex: searchValue, $options: 'i' } },
               { lastName: { $regex: searchValue, $options: 'i' } },
+              {
+                $expr: {
+                  $regexMatch: {
+                    input: { $concat: ['$firstName', ' ', '$lastName'] },
+                    regex: searchValue,
+                    options: 'i',
+                  },
+                },
+              },
             ],
           }),
         },
@@ -116,8 +125,26 @@ export class UserService {
                 $match: {
                   $expr: {
                     $or: [
-                      { $eq: ['$userA', '$$userId'] },
-                      { $eq: ['$userB', '$$userId'] },
+                      {
+                        $and: [
+                          {
+                            $eq: ['$userA', '$$userId'],
+                          },
+                          {
+                            $eq: ['$userB', requestedUserId],
+                          },
+                        ],
+                      },
+                      {
+                        $and: [
+                          {
+                            $eq: ['$userB', '$$userId'],
+                          },
+                          {
+                            $eq: ['$userA', requestedUserId],
+                          },
+                        ],
+                      },
                     ],
                   },
                 },
