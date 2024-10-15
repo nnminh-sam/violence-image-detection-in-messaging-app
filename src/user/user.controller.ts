@@ -27,8 +27,14 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get('/my')
-  async findOne(@RequestedUser() user: any) {
-    const response: User = await this.userService.findById(user.id);
+  async findOne(
+    @RequestedUser() user: any,
+    @Query('get-password') getPassword: boolean,
+  ) {
+    const response: User = await this.userService.findById(
+      user.id,
+      getPassword || false,
+    );
     if (!response) throw new NotFoundException('User not found');
     return response;
   }

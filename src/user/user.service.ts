@@ -48,10 +48,16 @@ export class UserService {
       .exec();
   }
 
-  async findById(id: string): Promise<User> {
+  async findById(id: string, getPassword?: boolean): Promise<User> {
     return (await this.userModel
       .findOne({ _id: id, deletedAt: null })
-      .select('-password -__v -deletedAt')
+      .select({
+        ...(!getPassword && {
+          password: 0,
+        }),
+        __v: 0,
+        deletedAt: 0,
+      })
       .transform(MongooseDocumentTransformer)
       .exec()) as User;
   }
@@ -220,6 +226,7 @@ export class UserService {
         },
       },
     ];
+
     const memberships = await this.userModel
       .aggregate(pipeline)
       .skip(skip)
