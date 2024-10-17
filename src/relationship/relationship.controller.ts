@@ -29,9 +29,13 @@ export class RelationshipController {
 
   @Post()
   async create(
+    @RequestedUser() user: any,
     @Body() createRelationshipDto: CreateRelationshipDto,
   ): Promise<PopulatedRelationship> {
-    return await this.relationshipService.create(createRelationshipDto);
+    return await this.relationshipService.create(
+      createRelationshipDto,
+      user.id,
+    );
   }
 
   @Get('/my')

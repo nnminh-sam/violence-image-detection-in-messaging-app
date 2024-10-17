@@ -40,7 +40,10 @@ export class RelationshipService {
     private readonly membershipService: MembershipService,
   ) {}
 
-  async create(payload: CreateRelationshipDto): Promise<PopulatedRelationship> {
+  async create(
+    payload: CreateRelationshipDto,
+    requestedUserId: string,
+  ): Promise<PopulatedRelationship> {
     if (payload.userA === payload.userB) {
       throw new BadRequestException('User A and user B must be different');
     }
@@ -54,22 +57,40 @@ export class RelationshipService {
     if (!userB) {
       throw new BadRequestException('User B not found');
     }
+    const userARequestedRelationship: boolean =
+      userA.id === requestedUserId ? true : false;
 
     const existedRelationship: Relationship = await this.findByUserIds(
       userA.id,
       userB.id,
     );
-    if (existedRelationship) {
-      throw new BadRequestException('Relationship existed');
-    }
-
     if (
-      payload.status !== RelationshipStatus.REQUEST_USER_A &&
-      payload.status !== RelationshipStatus.REQUEST_USER_B
+      existedRelationship &&
+      existedRelationship.status === RelationshipStatus.AWAY
     ) {
-      throw new BadRequestException(
-        'Relationship status must be REQUEST_USER_A or REQUEST_USER_B',
-      );
+      try {
+        const data: RelationshipDocument = await this.relationshipModel
+          .findByIdAndUpdate(
+            existedRelationship.id,
+            {
+              status:
+                requestedUserId === existedRelationship.userA
+                  ? RelationshipStatus.REQUEST_USER_A
+                  : RelationshipStatus.REQUEST_USER_B,
+            },
+            { new: true },
+          )
+          .exec();
+        return await this.findById(data._id.toString());
+      } catch (error) {
+        this.logger.fatal(error);
+        throw new InternalServerErrorException(
+          'Failed to create relationship',
+          error,
+        );
+      }
+    } else if (existedRelationship) {
+      throw new BadRequestException('Relationship already exists');
     }
 
     const relationshipData: any =
@@ -77,15 +98,16 @@ export class RelationshipService {
         ? {
             userA: userA.id,
             userB: userB.id,
-            status: payload.status,
+            status: userARequestedRelationship
+              ? RelationshipStatus.REQUEST_USER_A
+              : RelationshipStatus.REQUEST_USER_B,
           }
         : {
             userA: userB.id,
             userB: userA.id,
-            status:
-              payload.status === RelationshipStatus.REQUEST_USER_A
-                ? RelationshipStatus.REQUEST_USER_B
-                : RelationshipStatus.REQUEST_USER_A,
+            status: userARequestedRelationship
+              ? RelationshipStatus.REQUEST_USER_B
+              : RelationshipStatus.REQUEST_USER_A,
           };
 
     try {
@@ -169,7 +191,6 @@ export class RelationshipService {
   ) {
     const filter: any = {
       $or: [{ userA: userId }, { userB: userId }],
-      blockedAt: null,
     };
     const totalDocument: number =
       await this.relationshipModel.countDocuments(filter);
@@ -336,7 +357,11 @@ export class RelationshipService {
           ? RelationshipStatus.BLOCKED_USER_A
           : RelationshipStatus.BLOCKED_USER_B;
       const data: RelationshipDocument = await this.relationshipModel
-        .findByIdAndUpdate(relationship.id, { status }, { new: true })
+        .findByIdAndUpdate(
+          relationship.id,
+          { status, blockedAt: new Date() },
+          { new: true },
+        )
         .exec();
       return await this.findById(data._id.toString());
     } catch (error) {
@@ -361,7 +386,13 @@ export class RelationshipService {
     }
 
     try {
-      await this.relationshipModel.findByIdAndDelete(relationshipId).exec();
+      await this.relationshipModel
+        .findByIdAndUpdate(
+          relationshipId,
+          { status: RelationshipStatus.AWAY },
+          { new: true },
+        )
+        .exec();
     } catch (error) {
       this.logger.fatal(error);
       throw new InternalServerErrorException('Failed to delete relationship');

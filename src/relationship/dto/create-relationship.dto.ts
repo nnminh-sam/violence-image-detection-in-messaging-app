@@ -13,7 +13,4 @@ export class CreateRelationshipDto {
   })
   @IsMongoId()
   userB: string;
-
-  @IsEnum(RelationshipStatus)
-  status: RelationshipStatus;
 }
