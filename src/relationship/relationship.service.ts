@@ -245,6 +245,29 @@ export class RelationshipService {
       throw new BadRequestException('Users are already friends');
     }
 
+    const existedDirectConversation =
+      await this.conversationService.isNameExisted(
+        `Direct conversation [${relationshipId}]`,
+      );
+    if (existedDirectConversation) {
+      try {
+        const data: RelationshipDocument = await this.relationshipModel
+          .findByIdAndUpdate(
+            relationshipId,
+            { status: RelationshipStatus.FRIENDS },
+            { new: true },
+          )
+          .exec();
+        return await this.findById(data._id.toString());
+      } catch (error) {
+        this.logger.fatal(error);
+        throw new InternalServerErrorException(
+          'Failed to accept relationship request',
+          error,
+        );
+      }
+    }
+
     const userA: User = relationship.userA;
     const userB: User = relationship.userB;
     const host: string = requestedUserId;
