@@ -245,9 +245,10 @@ export class RelationshipService {
       throw new BadRequestException('Users are already friends');
     }
 
+    const timestamp: number = Date.now();
     const existedDirectConversation =
       await this.conversationService.isNameExisted(
-        `Direct conversation [${relationshipId}]`,
+        `${relationshipId}.${timestamp}`,
       );
     if (existedDirectConversation) {
       try {
@@ -274,8 +275,8 @@ export class RelationshipService {
 
     try {
       const payload: CreateConversationDto = {
-        name: `Direct conversation [${relationshipId}]`,
-        description: `Direct conversation [${relationshipId}]`,
+        name: `${relationshipId}.${timestamp}`,
+        description: `[userA, ${userA.id}], [userB, ${userB.id}]`,
         createdBy: host,
         host,
         type: ConversationType.DIRECT,
