@@ -60,7 +60,7 @@ export class ConversationService {
     }
   }
 
-  async isNameExisted(name: string): Promise<Boolean> {
+  async isNameExisted(name: string): Promise<boolean> {
     const conversation: ConversationDocument =
       await this.conversationModel.findOne({
         name: name,

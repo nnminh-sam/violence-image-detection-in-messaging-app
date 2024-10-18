@@ -241,16 +241,25 @@ export class RelationshipService {
     if (!relationship) {
       throw new NotFoundException('Relationship not found');
     }
+
     if (relationship.status === RelationshipStatus.FRIENDS) {
       throw new BadRequestException('Users are already friends');
     }
 
-    const timestamp: number = Date.now();
-    const existedDirectConversation =
-      await this.conversationService.isNameExisted(
-        `${relationshipId}.${timestamp}`,
-      );
-    if (existedDirectConversation) {
+    if (
+      relationship.status === RelationshipStatus.BLOCKED_USER_A ||
+      relationship.status === RelationshipStatus.BLOCKED_USER_B
+    ) {
+      throw new BadRequestException('Users are blocked');
+    }
+
+    if (relationship.status === RelationshipStatus.AWAY) {
+      throw new BadRequestException('User must request to be friends first');
+    }
+
+    const existDirectConversation: boolean =
+      await this.conversationService.isNameExisted(relationshipId);
+    if (existDirectConversation) {
       try {
         const data: RelationshipDocument = await this.relationshipModel
           .findByIdAndUpdate(
@@ -272,11 +281,10 @@ export class RelationshipService {
     const userA: User = relationship.userA;
     const userB: User = relationship.userB;
     const host: string = requestedUserId;
-
     try {
       const payload: CreateConversationDto = {
-        name: `${relationshipId}.${timestamp}`,
-        description: `[userA, ${userA.id}], [userB, ${userB.id}]`,
+        name: `${relationshipId}`,
+        description: `[userA, ${userA.email}], [userB, ${userB.email}]`,
         createdBy: host,
         host,
         type: ConversationType.DIRECT,
