@@ -394,6 +394,54 @@ export class RelationshipService {
     }
   }
 
+  async unblockUser(requestedUserId: string, relationshipId: string) {
+    const relationship: RelationshipDocument = await this.relationshipModel
+      .findById(relationshipId)
+      .exec();
+    if (!relationship) {
+      throw new NotFoundException('Relationship not found');
+    }
+
+    const relationshipMemberIds: string[] = [
+      relationship.userA.toString(),
+      relationship.userB.toString(),
+    ];
+    if (!relationshipMemberIds.includes(requestedUserId)) {
+      throw new UnauthorizedException('Unauthorized user');
+    }
+
+    const isBlockedByUserA: boolean =
+      relationship.userA.toString() === requestedUserId;
+    if (
+      !isBlockedByUserA &&
+      relationship.status === RelationshipStatus.BLOCKED_USER_A
+    ) {
+      throw new UnauthorizedException('User is not authorized to unblock');
+    } else if (
+      isBlockedByUserA &&
+      relationship.status === RelationshipStatus.BLOCKED_USER_B
+    ) {
+      throw new UnauthorizedException('User is not authorized to unblock');
+    }
+
+    try {
+      const data: RelationshipDocument = await this.relationshipModel
+        .findByIdAndUpdate(
+          relationshipId,
+          {
+            status: RelationshipStatus.AWAY,
+            blockedAt: null,
+          },
+          { new: true },
+        )
+        .exec();
+      return await this.findById(data._id.toString());
+    } catch (error) {
+      this.logger.fatal(error);
+      throw new InternalServerErrorException('Failed to unblock user');
+    }
+  }
+
   async delete(relationshipId: string, requestedUserId: string) {
     const relationship: PopulatedRelationship =
       await this.findById(relationshipId);

@@ -55,7 +55,15 @@ export class RelationshipController {
     );
   }
 
-  @Get('accept/:relationshipId')
+  @Get(':id')
+  async findOne(
+    @RequestedUser() user: any,
+    @Param('id') id: string,
+  ): Promise<PopulatedRelationship> {
+    return await this.relationshipService.findMyRelationshipById(id, user.id);
+  }
+
+  @Patch('accept/:relationshipId')
   async confirmFriend(
     @RequestedUser() user: any,
     @Param('relationshipId') relationshipId: string,
@@ -66,12 +74,12 @@ export class RelationshipController {
     );
   }
 
-  @Get(':id')
-  async findOne(
+  @Patch('unblock/:relationshipId')
+  async unblockUser(
     @RequestedUser() user: any,
-    @Param('id') id: string,
-  ): Promise<PopulatedRelationship> {
-    return await this.relationshipService.findMyRelationshipById(id, user.id);
+    @Param('relationshipId') relationshipId: string,
+  ) {
+    return await this.relationshipService.unblockUser(user.id, relationshipId);
   }
 
   @Patch('block')
