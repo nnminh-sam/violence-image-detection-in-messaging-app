@@ -20,14 +20,10 @@ import { PopulatedMessage } from 'src/message/entities/message.entity';
 import { Conversation } from 'src/conversation/entities/conversation.entity';
 dotenv.config();
 
-const SOCKET_PORT: number = +process.env.SOCKET_PORT;
-const ALLOWED_ORIGIN: string =
-  process.env.MODE === 'dev' ? '*' : process.env.CLIENT;
-
-@WebSocketGateway(SOCKET_PORT, {
+@WebSocketGateway({
   cors: {
     origin: 'http://localhost:5173',
-    allowedHeaders: ['Authorization', 'Content-Type'],
+    allowedHeaders: '*',
   },
 })
 export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
