@@ -36,6 +36,9 @@ export class Membership {
     default: null,
   })
   partner: string;
+
+  @Prop({ default: null, nullable: true })
+  bannedAt: Date;
 }
 
 export type MembershipDocument = Membership & Document;

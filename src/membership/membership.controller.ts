@@ -17,6 +17,8 @@ import { UpdateMembershipDto } from './dto/update-membership.dto';
 import { MembershipService } from './membership.service';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import * as dotenv from 'dotenv';
+import { ChangeHostDto } from './dto/change-host.dto';
+import { BanUserDto } from './dto/ban-user.dto';
 dotenv.config();
 
 const envVar = process.env;
@@ -37,7 +39,7 @@ export class MembershipController {
   }
 
   @Get('conversation/:conversationId')
-  async findMemberships(
+  async findParticipatedMembershipByConversationId(
     @RequestedUser() user: any,
     @Param('conversationId') conversationId: string,
     @Query('page') page: number,
@@ -50,7 +52,7 @@ export class MembershipController {
     sortBy = sortBy || 'id';
     orderBy = orderBy?.toLowerCase() || 'asc';
 
-    return this.membershipService.findMemberships(
+    return this.membershipService.findParticipatedMembershipByConversationId(
       conversationId,
       user.id,
       page,
@@ -89,17 +91,22 @@ export class MembershipController {
     return data;
   }
 
-  @Patch('/:id')
-  async update(
+  @Patch('change-host')
+  async changeHost(
     @RequestedUser() user: any,
-    @Param('id') id: string,
-    @Body() updateMembershipDto: UpdateMembershipDto,
+    @Body() changeHostDto: ChangeHostDto,
   ) {
-    return await this.membershipService.update(
-      id,
-      user.id,
-      updateMembershipDto,
-    );
+    return await this.membershipService.changeHost(user.id, changeHostDto);
+  }
+
+  @Patch('ban')
+  async banUser(@RequestedUser() user: any, @Body() banUserDto: BanUserDto) {
+    return await this.membershipService.banUser(user.id, banUserDto);
+  }
+
+  @Patch('unban')
+  async unbanUser(@RequestedUser() user: any, @Body() banUserDto: BanUserDto) {
+    return await this.membershipService.unbanUser(user.id, banUserDto);
   }
 
   @Delete('/:id')

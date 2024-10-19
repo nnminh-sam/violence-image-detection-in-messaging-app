@@ -153,6 +153,39 @@ export class ConversationService {
     }
   }
 
+  async updateHost(
+    conversationId: string,
+    newHostId: string,
+    requestedUserId: string,
+  ) {
+    const conversation: PopulatedConversation =
+      await this.findById(conversationId);
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
+    const isAuthorizedUser: boolean = await this.isConversationHost(
+      conversationId,
+      requestedUserId,
+    );
+    if (!isAuthorizedUser) throw new UnauthorizedException('Unauthorized user');
+
+    const newHost: User = await this.userService.findById(newHostId);
+    if (!newHost) throw new NotFoundException('New host not found');
+
+    try {
+      const data: ConversationDocument = await this.conversationModel
+        .findByIdAndUpdate(conversationId, { host: newHostId }, { new: true })
+        .exec();
+
+      return await this.findById(data._id.toString());
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException(
+        'Failed to update conversation host',
+        error,
+      );
+    }
+  }
+
   async remove(
     id: string,
     requestedUser: string,

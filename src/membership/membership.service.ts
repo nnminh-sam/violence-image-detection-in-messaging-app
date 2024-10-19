@@ -26,6 +26,10 @@ import { User } from 'src/user/entities/user.entity';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 import { ConversationType } from 'src/conversation/entities/conversation-type.enum';
 import { populate } from 'dotenv';
+import { MembershipRole } from './entities/membership-role.enum';
+import { BanUserDto } from './dto/ban-user.dto';
+import { RequestedUser } from '../decorator/requested-user.decorator';
+import { ChangeHostDto } from './dto/change-host.dto';
 
 @Injectable()
 export class MembershipService {
@@ -51,14 +55,12 @@ export class MembershipService {
 
     const conversation: PopulatedConversation =
       await this.conversationService.findById(createMembershipDto.conversation);
-    if (!conversation) {
-      throw new NotFoundException('Conversation not found');
-    }
-    if ((conversation.host as User).id !== requestUserId) {
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
+    if ((conversation.host as User).id !== requestUserId)
       throw new UnauthorizedException(
         'Request user must be the host of this conversation',
       );
-    }
 
     const membership: PopulatedMembership =
       await this.findByUserIdAndConversationId(
@@ -146,7 +148,7 @@ export class MembershipService {
       .exec()) as PopulatedMembership;
   }
 
-  async findMemberships(
+  async findParticipatedMembershipByConversationId(
     conversationId: string,
     requestedUser: string,
     page: number,
@@ -195,9 +197,7 @@ export class MembershipService {
       .sort({
         [sortBy]: orderBy === 'asc' ? 1 : -1,
       })
-      .transform((doc: any) => {
-        return doc.map(MongooseDocumentTransformer);
-      })
+      .transform((doc: any) => doc.map(MongooseDocumentTransformer))
       .exec()) as PopulatedMembership[];
     return {
       data,
@@ -265,50 +265,17 @@ export class MembershipService {
     };
   }
 
-  async update(
-    id: string,
-    hostId: string,
+  private async update(
+    relationshipId: string,
+    requestUserId: string,
     updateMembershipDto: UpdateMembershipDto,
   ): Promise<PopulatedMembership> {
-    const membership: PopulatedMembership = await this.findById(id);
-    if (!membership)
-      throw new NotFoundException('Conversation membership not found');
+    const membership: PopulatedMembership = await this.findById(relationshipId);
+    if (!membership) throw new NotFoundException('Membership not found');
 
-    const conversation: PopulatedConversation =
-      await this.conversationService.findById(
-        (membership.conversation as Conversation).id,
-      );
-    if (!conversation) throw new NotFoundException('Conversation not found');
-    if ((conversation.host as User).id !== hostId)
-      throw new UnauthorizedException(
-        'User must be the host of this conversation',
-      );
-
-    try {
-      const data: MembershipDocument = await this.membershipModel
-        .findByIdAndUpdate(id, { ...updateMembershipDto }, { new: true })
-        .exec();
-      return await this.findById(data._id.toString());
-    } catch (error) {
-      this.logger.fatal(error);
-      throw new InternalServerErrorException(
-        'Failed to update conversation membership',
-        error,
-      );
-    }
-  }
-
-  async remove(id: string, hostId: string): Promise<PopulatedMembership> {
-    const membership: PopulatedMembership = await this.findById(id);
-    if (!membership)
-      throw new NotFoundException('Conversation membership not found');
-
-    const conversation: PopulatedConversation =
-      await this.conversationService.findById(
-        (membership.conversation as Conversation).id,
-      );
-    if (!conversation) throw new NotFoundException('Conversation not found');
-    if ((conversation.host as User).id !== hostId)
+    const conversation: Conversation = membership.conversation as Conversation;
+    const conversationHostId: string = conversation.host;
+    if (conversationHostId !== requestUserId)
       throw new UnauthorizedException(
         'User must be the host of this conversation',
       );
@@ -316,21 +283,180 @@ export class MembershipService {
     try {
       const data: MembershipDocument = await this.membershipModel
         .findByIdAndUpdate(
-          id,
-          { status: MembershipStatus.REMOVED },
+          relationshipId,
+          { ...updateMembershipDto },
           { new: true },
         )
         .exec();
-      return {
-        ...membership,
-        status: MembershipStatus.REMOVED,
-      };
+      return await this.findById(data._id.toString());
     } catch (error) {
       this.logger.fatal(error);
       throw new InternalServerErrorException(
-        'Failed to remove conversation membership',
+        'Failed to update membership',
         error,
       );
     }
+  }
+
+  async changeHost(requestUserId: string, changeHostDto: ChangeHostDto) {
+    const requestUserMembership: PopulatedMembership =
+      await this.findByUserIdAndConversationId(
+        requestUserId,
+        changeHostDto.conversationId,
+      );
+    if (!requestUserMembership)
+      throw new UnauthorizedException('User must be member of conversation');
+    if (requestUserMembership.role !== MembershipRole.HOST) {
+      throw new UnauthorizedException(
+        'User must be the host of this conversation',
+      );
+    }
+
+    const targetUserMembership: PopulatedMembership =
+      await this.findByUserIdAndConversationId(
+        changeHostDto.newHost,
+        changeHostDto.conversationId,
+      );
+    if (!targetUserMembership)
+      throw new UnauthorizedException('User must be member of conversation');
+    if (targetUserMembership.role === MembershipRole.HOST) {
+      throw new BadRequestException(
+        'User is already a host of this conversation',
+      );
+    }
+
+    try {
+      const result = await Promise.all([
+        this.membershipModel.findByIdAndUpdate(
+          requestUserMembership.id,
+          { role: MembershipRole.MEMBER },
+          { new: true },
+        ),
+        this.membershipModel.findByIdAndUpdate(
+          targetUserMembership.id,
+          { role: MembershipRole.HOST },
+          { new: true },
+        ),
+        this.conversationService.updateHost(
+          changeHostDto.conversationId,
+          changeHostDto.newHost,
+          requestUserId,
+        ),
+      ]);
+      return [
+        await this.findById(result[0]._id.toString()),
+        await this.findById(result[1]._id.toString()),
+      ];
+    } catch (error: any) {
+      this.logger.fatal(error);
+      throw new InternalServerErrorException(
+        'Failed to update membership',
+        error,
+      );
+    }
+  }
+
+  async banUser(
+    requestUserId: string,
+    banUserDto: BanUserDto,
+  ): Promise<PopulatedMembership> {
+    const requestedUserMembership: PopulatedMembership =
+      await this.findByUserIdAndConversationId(
+        requestUserId,
+        banUserDto.conversation,
+      );
+    if (!requestedUserMembership)
+      throw new UnauthorizedException('User must be member of conversation');
+    if (requestedUserMembership.role !== MembershipRole.HOST)
+      throw new UnauthorizedException(
+        'User must be the host of this conversation',
+      );
+
+    const banningUserMembership: PopulatedMembership =
+      await this.findByUserIdAndConversationId(
+        banUserDto.targetUser,
+        banUserDto.conversation,
+      );
+    if (!banningUserMembership)
+      throw new NotFoundException(
+        'Target user is not a member of conversation',
+      );
+
+    try {
+      const result: MembershipDocument =
+        await this.membershipModel.findByIdAndUpdate(
+          banningUserMembership.id,
+          {
+            status: MembershipStatus.BANNED,
+            role: MembershipRole.GUEST,
+            bannedAt: new Date(),
+          },
+          { new: true },
+        );
+      return await this.findById(result._id.toString());
+    } catch (error: any) {
+      this.logger.fatal(error);
+      throw new InternalServerErrorException(
+        'Failed to update membership',
+        error,
+      );
+    }
+  }
+
+  async unbanUser(
+    requestUserId: string,
+    banUserDto: BanUserDto,
+  ): Promise<PopulatedMembership> {
+    const requestedUserMembership: PopulatedMembership =
+      await this.findByUserIdAndConversationId(
+        requestUserId,
+        banUserDto.conversation,
+      );
+    if (!requestedUserMembership)
+      throw new UnauthorizedException('User must be member of conversation');
+    if (requestedUserMembership.role !== MembershipRole.HOST)
+      throw new UnauthorizedException(
+        'User must be the host of this conversation',
+      );
+
+    const unbanningUserMembership: PopulatedMembership =
+      await this.findByUserIdAndConversationId(
+        banUserDto.targetUser,
+        banUserDto.conversation,
+      );
+    if (!unbanningUserMembership)
+      throw new NotFoundException(
+        'Target user is not a member of conversation',
+      );
+
+    try {
+      const result: MembershipDocument =
+        await this.membershipModel.findByIdAndUpdate(
+          unbanningUserMembership.id,
+          {
+            status: MembershipStatus.PARTICIPATING,
+            role: MembershipRole.MEMBER,
+            bannedAt: null,
+          },
+          { new: true },
+        );
+      return await this.findById(result._id.toString());
+    } catch (error: any) {
+      this.logger.fatal(error);
+      throw new InternalServerErrorException(
+        'Failed to update membership',
+        error,
+      );
+    }
+  }
+
+  async remove(
+    relationshipId: string,
+    requestUserId: string,
+  ): Promise<PopulatedMembership> {
+    return await this.update(relationshipId, requestUserId, {
+      status: MembershipStatus.AWAY,
+      role: MembershipRole.GUEST,
+    });
   }
 }
