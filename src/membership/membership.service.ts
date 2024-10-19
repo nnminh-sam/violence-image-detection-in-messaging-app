@@ -185,7 +185,9 @@ export class MembershipService {
 
     const filter: any = {
       conversation: conversationId,
-      status: MembershipStatus.PARTICIPATING,
+      status: {
+        $ne: MembershipStatus.AWAY,
+      },
     };
 
     const totalDocument: number =
@@ -321,7 +323,7 @@ export class MembershipService {
     const requestUserMembership: PopulatedMembership =
       await this.findByUserIdAndConversationId(
         requestUserId,
-        changeHostDto.conversationId,
+        changeHostDto.conversation,
       );
     if (!requestUserMembership)
       throw new UnauthorizedException('User must be member of conversation');
@@ -334,7 +336,7 @@ export class MembershipService {
     const targetUserMembership: PopulatedMembership =
       await this.findByUserIdAndConversationId(
         changeHostDto.newHost,
-        changeHostDto.conversationId,
+        changeHostDto.conversation,
       );
     if (!targetUserMembership)
       throw new UnauthorizedException('User must be member of conversation');
@@ -357,7 +359,7 @@ export class MembershipService {
           { new: true },
         ),
         this.conversationService.updateHost(
-          changeHostDto.conversationId,
+          changeHostDto.conversation,
           changeHostDto.newHost,
           requestUserId,
         ),
