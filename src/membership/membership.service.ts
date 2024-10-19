@@ -67,8 +67,27 @@ export class MembershipService {
         createMembershipDto.user,
         createMembershipDto.conversation,
       );
-    if (membership) {
-      throw new BadRequestException('Conversation membership existed');
+    if (membership && membership.status === MembershipStatus.AWAY) {
+      try {
+        await this.membershipModel.findByIdAndUpdate(
+          membership.id,
+          {
+            status: MembershipStatus.PARTICIPATING,
+          },
+          { new: true },
+        );
+        return await this.findById(membership.id);
+      } catch (error: any) {
+        this.logger.fatal(error);
+        throw new InternalServerErrorException(
+          'Failed to update membership',
+          error,
+        );
+      }
+    } else if (membership) {
+      throw new BadRequestException(
+        'User is already a member of this conversation',
+      );
     }
 
     const membershipData: any = {
