@@ -26,7 +26,7 @@ dotenv.config();
 const envVar = process.env;
 const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/media`;
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
-const allowedFileExtensions = ['.jpeg', '.png', '.mp4', '.mov'];
+const allowedFileExtensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov'];
 
 @UseGuards(JwtGuard)
 @Controller(API_URL)
