@@ -81,7 +81,6 @@ export class MessageService {
     try {
       const createdMessage = await new this.messageModel({
         ...createMessageDto,
-        createdAt: new Date(),
       }).save();
 
       const data: PopulatedMessage = await this.findById(
@@ -136,6 +135,11 @@ export class MessageService {
         select: '-__v -deletedAt',
         transform: MongooseDocumentTransformer,
       })
+      .populate({
+        path: 'media',
+        select: '-__v -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
       .select('-__v -deletedAt')
       .limit(size)
       .skip(skip)
@@ -172,6 +176,11 @@ export class MessageService {
       })
       .populate({
         path: 'conversation',
+        select: '-__v -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'media',
         select: '-__v -deletedAt',
         transform: MongooseDocumentTransformer,
       })

@@ -8,6 +8,7 @@ import { MembershipModule } from 'src/membership/membership.module';
 import { MediaService } from './media.service';
 import { MediaController } from './media.controller';
 import { EventModule } from 'src/event/event.module';
+import { MessageModule } from 'src/message/message.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { EventModule } from 'src/event/event.module';
     }),
     MembershipModule,
     EventModule,
+    MessageModule,
   ],
   providers: [MediaService],
   controllers: [MediaController],

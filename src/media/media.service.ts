@@ -15,6 +15,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { MembershipService } from 'src/membership/membership.service';
 import { EventGateway } from '../event/event.gateway';
+import { MessageService } from 'src/message/message.service';
 
 @Injectable()
 export class MediaService {
@@ -25,6 +26,7 @@ export class MediaService {
     private mediaModel: Model<Media>,
     private readonly membershipService: MembershipService,
     private readonly eventGateway: EventGateway,
+    private readonly messageService: MessageService,
   ) {}
 
   private getFileAbsolutePath(filename: string) {
@@ -116,11 +118,7 @@ export class MediaService {
     return data.filter((item: Media) => this.checkFileExist(item.filename));
   }
 
-  async uploadFile(
-    requestUserId: string,
-    room: string,
-    file: Express.Multer.File,
-  ) {
+  async create(requestUserId: string, room: string, file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('File upload failed.');
     }
@@ -144,11 +142,23 @@ export class MediaService {
         filePath: this.getFileAbsolutePath(file.filename),
         size: file.size,
         mimetype: file.mimetype,
-        status: MediaStatus.APPROVED,
+        status: MediaStatus.PENDING,
       }).save();
 
-      const response = await this.findById(data._id);
+      const messageResponse = await this.messageService.create(
+        {
+          sendBy: requestUserId,
+          conversation: room,
+          message: `User [${requestUserId}] uploaded a file`,
+          media: data._id.toString(),
+        },
+        requestUserId,
+      );
+
+      const response = await this.findById(data._id.toString());
+
       this.eventGateway.notifyNewMedia({ media: response });
+
       return response;
     } catch (error: any) {
       this.logger.fatal(error);

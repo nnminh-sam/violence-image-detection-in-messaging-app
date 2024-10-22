@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { Conversation } from 'src/conversation/entities/conversation.entity';
+import { Media } from 'src/media/entities/media.entity';
 import { User } from 'src/user/entities/user.entity';
 
 @Schema({ timestamps: true })
@@ -25,6 +26,13 @@ export class Message {
 
   @Prop({ required: true, nullable: false })
   message: string;
+
+  @Prop({
+    type: String,
+    ref: Media.name,
+    required: false,
+  })
+  media?: string;
 
   @Prop({ default: null })
   deletedAt: Date;

@@ -22,5 +22,6 @@ import { EventModule } from 'src/event/event.module';
   ],
   controllers: [MessageController],
   providers: [MessageService],
+  exports: [MessageService],
 })
 export class MessageModule {}

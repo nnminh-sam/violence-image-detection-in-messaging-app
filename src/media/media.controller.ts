@@ -90,6 +90,6 @@ export class MediaController {
     @UploadedFile()
     file: Express.Multer.File,
   ) {
-    return this.mediaService.uploadFile(user.id, room, file);
+    return this.mediaService.create(user.id, room, file);
   }
 }
