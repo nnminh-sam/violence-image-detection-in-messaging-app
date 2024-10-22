@@ -14,15 +14,17 @@ import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transf
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { MembershipService } from 'src/membership/membership.service';
+import { EventGateway } from '../event/event.gateway';
 
 @Injectable()
-export class FileUploadService {
-  private logger: Logger = new Logger(FileUploadService.name);
+export class MediaService {
+  private logger: Logger = new Logger(MediaService.name);
 
   constructor(
     @InjectModel(Media.name)
     private mediaModel: Model<Media>,
     private readonly membershipService: MembershipService,
+    private readonly eventGateway: EventGateway,
   ) {}
 
   private getFileAbsolutePath(filename: string) {
@@ -145,7 +147,9 @@ export class FileUploadService {
         status: MediaStatus.APPROVED,
       }).save();
 
-      return await this.findById(data._id);
+      const response = await this.findById(data._id);
+      this.eventGateway.notifyNewMedia({ media: response });
+      return response;
     } catch (error: any) {
       this.logger.fatal(error);
       throw new InternalServerErrorException('Failed to upload file', error);

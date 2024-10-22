@@ -14,13 +14,12 @@ import {
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as dotenv from 'dotenv';
-import { existsSync } from 'fs';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { RequestedUser } from 'src/decorator/requested-user.decorator';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
-import { FileUploadService } from './file-upload.service';
-import { Media, PopulatedMedia } from './entities/media.entity';
+import { MediaService } from './media.service';
+import { PopulatedMedia } from './entities/media.entity';
 dotenv.config();
 
 const envVar = process.env;
@@ -30,8 +29,8 @@ const allowedFileExtensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov'];
 
 @UseGuards(JwtGuard)
 @Controller(API_URL)
-export class FileUploadController {
-  constructor(private readonly fileUploadService: FileUploadService) {}
+export class MediaController {
+  constructor(private readonly mediaService: MediaService) {}
 
   @Get('stream/:room')
   async streamFileById(
@@ -40,7 +39,7 @@ export class FileUploadController {
     @Query('id') id: string,
     @Res() res: Response,
   ) {
-    return this.fileUploadService.streamMedia(user.id, room, id, res);
+    return this.mediaService.streamMedia(user.id, room, id, res);
   }
 
   @Get('/:room')
@@ -50,11 +49,7 @@ export class FileUploadController {
     @Param('room') room: string,
   ) {
     const media: PopulatedMedia =
-      await this.fileUploadService.getMediaInConversationById(
-        user.id,
-        room,
-        id,
-      );
+      await this.mediaService.getMediaInConversationById(user.id, room, id);
     if (!media) {
       throw new NotFoundException('File not found');
     }
@@ -95,6 +90,6 @@ export class FileUploadController {
     @UploadedFile()
     file: Express.Multer.File,
   ) {
-    return this.fileUploadService.uploadFile(user.id, room, file);
+    return this.mediaService.uploadFile(user.id, room, file);
   }
 }

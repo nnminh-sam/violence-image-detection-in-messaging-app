@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
-import { FileUploadService } from './file-upload.service';
-import { FileUploadController } from './file-upload.controller';
 import { MulterModule } from '@nestjs/platform-express';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Media, MediaSchema } from './entities/media.entity';
-import { Membership } from 'src/membership/entities/membership.entity';
 import { MembershipModule } from 'src/membership/membership.module';
+import { MediaService } from './media.service';
+import { MediaController } from './media.controller';
+import { EventModule } from 'src/event/event.module';
 
 @Module({
   imports: [
@@ -23,8 +23,9 @@ import { MembershipModule } from 'src/membership/membership.module';
       rootPath: join(__dirname, '..', 'uploads'),
     }),
     MembershipModule,
+    EventModule,
   ],
-  providers: [FileUploadService],
-  controllers: [FileUploadController],
+  providers: [MediaService],
+  controllers: [MediaController],
 })
-export class FileUploadModule {}
+export class MediaModule {}
