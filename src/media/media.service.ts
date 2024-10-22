@@ -16,6 +16,8 @@ import { join } from 'path';
 import { MembershipService } from 'src/membership/membership.service';
 import { EventGateway } from '../event/event.gateway';
 import { MessageService } from 'src/message/message.service';
+import { Conversation } from 'src/conversation/entities/conversation.entity';
+import { PaginationDto } from 'src/helper/types/pagination.dto';
 
 @Injectable()
 export class MediaService {
@@ -60,6 +62,51 @@ export class MediaService {
     }
   }
 
+  async findAllUserSentMedia(
+    requestUserId: string,
+    paginationDto: PaginationDto,
+    status: MediaStatus,
+    room: string,
+  ) {
+    const filter: any = {
+      sender: requestUserId,
+      ...(status && { status }),
+      ...(room && { conversation: room }),
+    };
+    const totalDocument: number = await this.mediaModel.countDocuments(filter);
+    const totalPage: number = Math.ceil(totalDocument / paginationDto.size);
+    const skip: number = (paginationDto.page - 1) * paginationDto.size;
+
+    const data = (await this.mediaModel
+      .find(filter)
+      .populate({
+        path: 'sender',
+        select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'conversation',
+        select: '-__v -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .select('-__v')
+      .transform((doc: any) => doc.map(MongooseDocumentTransformer))
+      .limit(paginationDto.size)
+      .skip(skip)
+      .exec()) as PopulatedMedia[];
+    return {
+      data,
+      metadata: {
+        pagination: {
+          ...paginationDto,
+          totalPage,
+          totalDocument,
+        },
+        count: data.length,
+      },
+    };
+  }
+
   async getMediaInConversationById(
     requestUserId: string,
     conversationId: string,
@@ -101,21 +148,6 @@ export class MediaService {
       );
 
     return httpResponse.sendFile(media.filePath);
-  }
-
-  async findAll() {
-    const data = (await this.mediaModel
-      .find()
-      .populate({
-        path: 'user',
-        select: '-__v -password -deletedAt',
-        transform: MongooseDocumentTransformer,
-      })
-      .transform((doc: any) => doc.map(MongooseDocumentTransformer))
-      .select({ __v: 0 })
-      .exec()) as PopulatedMedia[];
-
-    return data.filter((item: Media) => this.checkFileExist(item.filename));
   }
 
   async create(requestUserId: string, room: string, file: Express.Multer.File) {
@@ -163,6 +195,72 @@ export class MediaService {
     } catch (error: any) {
       this.logger.fatal(error);
       throw new InternalServerErrorException('Failed to upload file', error);
+    }
+  }
+
+  async approveMedia(requestUserId: string, mediaId: string) {
+    const media = await this.findById(mediaId);
+    if (!media) throw new NotFoundException('File not found');
+    const mediaConversation = media.conversation as Conversation;
+
+    const requestUserMembership =
+      await this.membershipService.findByUserIdAndConversationId(
+        requestUserId,
+        mediaConversation.id,
+      );
+    if (!requestUserMembership)
+      throw new UnauthorizedException(
+        'User is not a member of the conversation',
+      );
+
+    if (media.status === MediaStatus.APPROVED) {
+      throw new BadRequestException('File already approved');
+    }
+
+    try {
+      const data = await this.mediaModel.findByIdAndUpdate(
+        mediaId,
+        { status: MediaStatus.APPROVED },
+        { new: true },
+      );
+
+      return await this.findById(data._id.toString());
+    } catch (error) {
+      this.logger.fatal(error);
+      throw new InternalServerErrorException('Failed to approve media', error);
+    }
+  }
+
+  async rejectMedia(requestUserId: string, mediaId: string) {
+    const media = await this.findById(mediaId);
+    if (!media) throw new NotFoundException('File not found');
+    const mediaConversation = media.conversation as Conversation;
+
+    const requestUserMembership =
+      await this.membershipService.findByUserIdAndConversationId(
+        requestUserId,
+        mediaConversation.id,
+      );
+    if (!requestUserMembership)
+      throw new UnauthorizedException(
+        'User is not a member of the conversation',
+      );
+
+    if (media.status === MediaStatus.REJECTED) {
+      throw new BadRequestException('File already rejected');
+    }
+
+    try {
+      const data = await this.mediaModel.findByIdAndUpdate(
+        mediaId,
+        { status: MediaStatus.REJECTED },
+        { new: true },
+      );
+
+      return await this.findById(data._id.toString());
+    } catch (error) {
+      this.logger.fatal(error);
+      throw new InternalServerErrorException('Failed to reject media', error);
     }
   }
 }

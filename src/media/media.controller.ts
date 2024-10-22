@@ -4,6 +4,7 @@ import {
   Get,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
   Res,
@@ -11,7 +12,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { query, Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as dotenv from 'dotenv';
 import { diskStorage } from 'multer';
@@ -20,6 +21,7 @@ import { RequestedUser } from 'src/decorator/requested-user.decorator';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import { MediaService } from './media.service';
 import { PopulatedMedia } from './entities/media.entity';
+import { MediaStatus } from './entities/media-status.enum';
 dotenv.config();
 
 const envVar = process.env;
@@ -40,6 +42,29 @@ export class MediaController {
     @Res() res: Response,
   ) {
     return this.mediaService.streamMedia(user.id, room, id, res);
+  }
+
+  @Get('sent')
+  async getAllUserSentMedia(
+    @RequestedUser() user: any,
+    @Query('page') page: number,
+    @Query('size') size: number,
+    @Query('sortBy') sortBy: string,
+    @Query('orderBy') orderBy: 'asc' | 'desc',
+    @Query('status') status: MediaStatus,
+    @Query('room') room: string,
+  ) {
+    return this.mediaService.findAllUserSentMedia(
+      user.id,
+      {
+        page: page || 1,
+        size: size || 10,
+        sortBy: sortBy || 'id',
+        orderBy: orderBy || 'asc',
+      },
+      status,
+      room,
+    );
   }
 
   @Get('/:room')
@@ -91,5 +116,15 @@ export class MediaController {
     file: Express.Multer.File,
   ) {
     return this.mediaService.create(user.id, room, file);
+  }
+
+  @Patch('approve/:id')
+  async approveMedia(@RequestedUser() user: any, @Param('id') id: string) {
+    return this.mediaService.approveMedia(user.id, id);
+  }
+
+  @Patch('reject/:id')
+  async rejectMedia(@RequestedUser() user: any, @Param('id') id: string) {
+    return this.mediaService.rejectMedia(user.id, id);
   }
 }
