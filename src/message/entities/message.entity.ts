@@ -26,9 +26,6 @@ export class Message {
   @Prop({ required: true, nullable: false })
   message: string;
 
-  @Prop()
-  attachment: string;
-
   @Prop({ default: null })
   deletedAt: Date;
 }

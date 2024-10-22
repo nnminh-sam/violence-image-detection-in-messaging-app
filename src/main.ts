@@ -5,19 +5,23 @@ import { ResponseTransformInterceptor } from './interceptor/response-transform.i
 import { GlobalHttpExceptionFilter } from './helper/filter/global-exception.filter';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { ApiLoggingInterceptor } from './interceptor/api-logging.interceptor';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 dotenv.config();
 
 async function bootstrap() {
   const runningMode: string = process.env.MODE;
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.enableCors({
     origin: runningMode === 'dev' ? '*' : process.env.CLIENT,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: '*',
   });
-  app.enableCors();
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    // prefix: '/files/',
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

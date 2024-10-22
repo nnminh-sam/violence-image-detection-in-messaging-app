@@ -52,16 +52,13 @@ export class MembershipService {
       createMembershipDto.user,
     );
     if (!user) throw new NotFoundException('User not found');
-
     const conversation: PopulatedConversation =
       await this.conversationService.findById(createMembershipDto.conversation);
     if (!conversation) throw new NotFoundException('Conversation not found');
-
     if ((conversation.host as User).id !== requestUserId)
       throw new UnauthorizedException(
         'Request user must be the host of this conversation',
       );
-
     const membership: PopulatedMembership =
       await this.findByUserIdAndConversationId(
         createMembershipDto.user,
@@ -71,9 +68,7 @@ export class MembershipService {
       try {
         await this.membershipModel.findByIdAndUpdate(
           membership.id,
-          {
-            status: MembershipStatus.PARTICIPATING,
-          },
+          { status: MembershipStatus.PARTICIPATING },
           { new: true },
         );
         return await this.findById(membership.id);
@@ -89,12 +84,10 @@ export class MembershipService {
         'User is already a member of this conversation',
       );
     }
-
     const membershipData: any = {
       ...createMembershipDto,
       status: MembershipStatus.PARTICIPATING,
     };
-
     const partner: User = await this.userService.findById(
       createMembershipDto.partner,
     );
@@ -106,7 +99,6 @@ export class MembershipService {
       const data: MembershipDocument = await new this.membershipModel({
         ...membershipData,
       }).save();
-
       return await this.findById(data._id.toString());
     } catch (error) {
       this.logger.fatal(error);
@@ -392,7 +384,6 @@ export class MembershipService {
       throw new UnauthorizedException(
         'User must be the host of this conversation',
       );
-
     const banningUserMembership: PopulatedMembership =
       await this.findByUserIdAndConversationId(
         banUserDto.targetUser,
@@ -402,7 +393,6 @@ export class MembershipService {
       throw new NotFoundException(
         'Target user is not a member of conversation',
       );
-
     try {
       const result: MembershipDocument =
         await this.membershipModel.findByIdAndUpdate(

@@ -44,22 +44,14 @@ export class RelationshipService {
     payload: CreateRelationshipDto,
     requestedUserId: string,
   ): Promise<PopulatedRelationship> {
-    if (payload.userA === payload.userB) {
+    if (payload.userA === payload.userB)
       throw new BadRequestException('User A and user B must be different');
-    }
-
     const userA: User = await this.userService.findById(payload.userA);
-    if (!userA) {
-      throw new BadRequestException('User A not found');
-    }
-
+    if (!userA) throw new BadRequestException('User A not found');
     const userB: User = await this.userService.findById(payload.userB);
-    if (!userB) {
-      throw new BadRequestException('User B not found');
-    }
-    const userARequestedRelationship: boolean =
+    if (!userB) throw new BadRequestException('User B not found');
+    const userARequestedRelationship =
       userA.id === requestedUserId ? true : false;
-
     const existedRelationship: Relationship = await this.findByUserIds(
       userA.id,
       userB.id,
@@ -92,7 +84,6 @@ export class RelationshipService {
     } else if (existedRelationship) {
       throw new BadRequestException('Relationship already exists');
     }
-
     const relationshipData: any =
       payload.userA <= payload.userB
         ? {
@@ -109,12 +100,10 @@ export class RelationshipService {
               ? RelationshipStatus.REQUEST_USER_B
               : RelationshipStatus.REQUEST_USER_A,
           };
-
     try {
       const data: RelationshipDocument = await new this.relationshipModel(
         relationshipData,
       ).save();
-
       return await this.findById(data._id.toString());
     } catch (error) {
       this.logger.fatal(error);
@@ -238,24 +227,16 @@ export class RelationshipService {
   ) {
     const relationship: PopulatedRelationship =
       await this.findById(relationshipId);
-    if (!relationship) {
-      throw new NotFoundException('Relationship not found');
-    }
-
-    if (relationship.status === RelationshipStatus.FRIENDS) {
+    if (!relationship) throw new NotFoundException('Relationship not found');
+    if (relationship.status === RelationshipStatus.FRIENDS)
       throw new BadRequestException('Users are already friends');
-    }
-
     if (
       relationship.status === RelationshipStatus.BLOCKED_USER_A ||
       relationship.status === RelationshipStatus.BLOCKED_USER_B
-    ) {
+    )
       throw new BadRequestException('Users are blocked');
-    }
-
-    if (relationship.status === RelationshipStatus.AWAY) {
+    if (relationship.status === RelationshipStatus.AWAY)
       throw new BadRequestException('User must request to be friends first');
-    }
 
     const existDirectConversation: boolean =
       await this.conversationService.isNameExisted(relationshipId);
@@ -277,7 +258,6 @@ export class RelationshipService {
         );
       }
     }
-
     const userA: User = relationship.userA;
     const userB: User = relationship.userB;
     const host: string = requestedUserId;
@@ -291,7 +271,6 @@ export class RelationshipService {
       };
       const directConversation: PopulatedConversation =
         await this.conversationService.create(payload);
-
       const userAMembership: PopulatedMembership =
         await this.membershipService.create(requestedUserId, {
           user: userA.id,
@@ -299,7 +278,6 @@ export class RelationshipService {
           role: MembershipRole.MEMBER,
           partner: userB.id.toString(),
         });
-
       const userBMembership: PopulatedMembership =
         await this.membershipService.create(requestedUserId, {
           user: userB.id,
@@ -307,7 +285,6 @@ export class RelationshipService {
           role: MembershipRole.MEMBER,
           partner: userA.id.toString(),
         });
-
       const data: RelationshipDocument = await this.relationshipModel
         .findByIdAndUpdate(
           relationshipId,

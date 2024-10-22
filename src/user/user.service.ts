@@ -127,22 +127,14 @@ export class UserService {
                     $or: [
                       {
                         $and: [
-                          {
-                            $eq: ['$userA', '$$userId'],
-                          },
-                          {
-                            $eq: ['$userB', requestedUserId],
-                          },
+                          { $eq: ['$userA', '$$userId'] },
+                          { $eq: ['$userB', requestedUserId] },
                         ],
                       },
                       {
                         $and: [
-                          {
-                            $eq: ['$userB', '$$userId'],
-                          },
-                          {
-                            $eq: ['$userA', requestedUserId],
-                          },
+                          { $eq: ['$userB', '$$userId'] },
+                          { $eq: ['$userA', requestedUserId] },
                         ],
                       },
                     ],

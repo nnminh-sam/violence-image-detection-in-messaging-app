@@ -4,7 +4,4 @@ export class UpdateMessageDto {
   @IsOptional()
   @IsString()
   message: string;
-
-  @IsOptional()
-  attachment?: string;
 }
