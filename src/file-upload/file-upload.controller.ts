@@ -45,7 +45,6 @@ export class FileUploadController {
   @Get()
   async getFileByFilename(@Query('filename') filename: string) {
     const media: Media = await this.fileUploadService.findByFilename(filename);
-    console.log('🚀 ~ FileUploadController ~ media:', media);
     if (!media) {
       throw new NotFoundException('File not found');
     }
