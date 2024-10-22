@@ -20,7 +20,7 @@ import { extname, join } from 'path';
 import { RequestedUser } from 'src/decorator/requested-user.decorator';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import { FileUploadService } from './file-upload.service';
-import { Media } from './entities/media.entity';
+import { Media, PopulatedMedia } from './entities/media.entity';
 dotenv.config();
 
 const envVar = process.env;
@@ -35,7 +35,7 @@ export class FileUploadController {
 
   @Get('stream/:id')
   async streamFileById(@Param('id') id: string, @Res() res: Response) {
-    const media: Media = await this.fileUploadService.findById(id);
+    const media: PopulatedMedia = await this.fileUploadService.findById(id);
     if (!media) {
       throw new NotFoundException('File not found');
     }
@@ -44,7 +44,8 @@ export class FileUploadController {
 
   @Get()
   async getFileByFilename(@Query('filename') filename: string) {
-    const media: Media = await this.fileUploadService.findByFilename(filename);
+    const media: PopulatedMedia =
+      await this.fileUploadService.findByFilename(filename);
     if (!media) {
       throw new NotFoundException('File not found');
     }
@@ -53,7 +54,7 @@ export class FileUploadController {
 
   @Get(':id')
   async getFileById(@Param('id') id: string) {
-    const media: Media = await this.fileUploadService.findById(id);
+    const media: PopulatedMedia = await this.fileUploadService.findById(id);
     if (!media) {
       throw new NotFoundException('File not found');
     }

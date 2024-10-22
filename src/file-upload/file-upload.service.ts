@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { Media, MediaDocument } from './entities/media.entity';
+import { Media, MediaDocument, PopulatedMedia } from './entities/media.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { MediaStatus } from './entities/media-status.enum';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
@@ -33,9 +33,14 @@ export class FileUploadService {
   async findById(id: string) {
     const data = (await this.mediaModel
       .findOne({ _id: id })
+      .populate({
+        path: 'user',
+        select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
       .transform(MongooseDocumentTransformer)
       .select({ __v: 0 })
-      .exec()) as Media;
+      .exec()) as PopulatedMedia;
 
     if (this.checkFileExist(data.filename)) {
       return data;
@@ -45,9 +50,14 @@ export class FileUploadService {
   async findByFilename(filename: string) {
     const data = (await this.mediaModel
       .findOne({ filename })
+      .populate({
+        path: 'user',
+        select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
       .transform(MongooseDocumentTransformer)
       .select({ __v: 0 })
-      .exec()) as Media;
+      .exec()) as PopulatedMedia;
 
     if (this.checkFileExist(filename)) {
       return data;
@@ -57,9 +67,14 @@ export class FileUploadService {
   async findAll() {
     const data = (await this.mediaModel
       .find()
-      .transform(MongooseDocumentTransformer)
+      .populate({
+        path: 'user',
+        select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .transform((doc: any) => doc.map(MongooseDocumentTransformer))
       .select({ __v: 0 })
-      .exec()) as Media[];
+      .exec()) as PopulatedMedia[];
 
     return data.filter((item: Media) => this.checkFileExist(item.filename));
   }

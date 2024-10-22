@@ -1,11 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { MediaStatus } from './media-status.enum';
+import { User } from 'src/user/entities/user.entity';
 
 @Schema({ timestamps: true })
 export class Media {
   id: string;
 
-  @Prop({ required: true })
+  @Prop({
+    type: String,
+    ref: User.name,
+    required: true,
+    nullable: false,
+  })
   user: string;
 
   @Prop({ required: true })
@@ -28,6 +34,10 @@ export class Media {
 }
 
 export type MediaDocument = Media & Document;
+
+export type PopulatedMedia = Media & {
+  user: User;
+};
 
 export const MediaSchema = SchemaFactory.createForClass(Media);
 
