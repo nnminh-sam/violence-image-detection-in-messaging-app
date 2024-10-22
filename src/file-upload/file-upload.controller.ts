@@ -5,8 +5,10 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   Res,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -15,24 +17,48 @@ import * as dotenv from 'dotenv';
 import { existsSync } from 'fs';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
+import { RequestedUser } from 'src/decorator/requested-user.decorator';
+import { JwtGuard } from 'src/auth/guards/jwt.guard';
+import { FileUploadService } from './file-upload.service';
+import { Media } from './entities/media.entity';
 dotenv.config();
 
 const envVar = process.env;
-const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/uploads`;
+const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/media`;
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 const allowedFileExtensions = ['.jpeg', '.png', '.mp4', '.mov'];
 
+@UseGuards(JwtGuard)
 @Controller(API_URL)
 export class FileUploadController {
-  @Get(':filename')
-  getFile(@Param('filename') filename: string, @Res() res: Response) {
-    const filePath = join(__dirname, '..', '..', 'uploads', filename);
+  constructor(private readonly fileUploadService: FileUploadService) {}
 
-    if (!existsSync(filePath)) {
+  @Get('stream/:id')
+  async streamFileById(@Param('id') id: string, @Res() res: Response) {
+    const media: Media = await this.fileUploadService.findById(id);
+    if (!media) {
       throw new NotFoundException('File not found');
     }
+    return res.sendFile(media.filePath);
+  }
 
-    return res.sendFile(filePath);
+  @Get()
+  async getFileByFilename(@Query('filename') filename: string) {
+    const media: Media = await this.fileUploadService.findByFilename(filename);
+    console.log('🚀 ~ FileUploadController ~ media:', media);
+    if (!media) {
+      throw new NotFoundException('File not found');
+    }
+    return media;
+  }
+
+  @Get(':id')
+  async getFileById(@Param('id') id: string) {
+    const media: Media = await this.fileUploadService.findById(id);
+    if (!media) {
+      throw new NotFoundException('File not found');
+    }
+    return media;
   }
 
   @Post('single')
@@ -63,14 +89,10 @@ export class FileUploadController {
       },
     }),
   )
-  async uploadSingleFile(@UploadedFile() file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('File upload failed.');
-    }
-    console.log('file:', file);
-    return {
-      message: 'File uploaded successfully!',
-      fileName: file.filename,
-    };
+  async uploadSingleFile(
+    @RequestedUser() user: any,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.fileUploadService.uploadFile(user.id, file);
   }
 }
