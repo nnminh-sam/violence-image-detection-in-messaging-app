@@ -6,6 +6,8 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Media, MediaSchema } from './entities/media.entity';
+import { Membership } from 'src/membership/entities/membership.entity';
+import { MembershipModule } from 'src/membership/membership.module';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { Media, MediaSchema } from './entities/media.entity';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
     }),
+    MembershipModule,
   ],
   providers: [FileUploadService],
   controllers: [FileUploadController],

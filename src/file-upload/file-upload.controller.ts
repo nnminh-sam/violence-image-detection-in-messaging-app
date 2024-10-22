@@ -33,35 +33,35 @@ const allowedFileExtensions = ['.jpeg', '.png', '.mp4', '.mov'];
 export class FileUploadController {
   constructor(private readonly fileUploadService: FileUploadService) {}
 
-  @Get('stream/:id')
-  async streamFileById(@Param('id') id: string, @Res() res: Response) {
-    const media: PopulatedMedia = await this.fileUploadService.findById(id);
-    if (!media) {
-      throw new NotFoundException('File not found');
-    }
-    return res.sendFile(media.filePath);
+  @Get('stream/:room')
+  async streamFileById(
+    @RequestedUser() user: any,
+    @Param('room') room: string,
+    @Query('id') id: string,
+    @Res() res: Response,
+  ) {
+    return this.fileUploadService.streamMedia(user.id, room, id, res);
   }
 
-  @Get()
-  async getFileByFilename(@Query('filename') filename: string) {
+  @Get('/:room')
+  async getMediaInRoomById(
+    @RequestedUser() user: any,
+    @Query('id') id: string,
+    @Param('room') room: string,
+  ) {
     const media: PopulatedMedia =
-      await this.fileUploadService.findByFilename(filename);
+      await this.fileUploadService.getMediaInConversationById(
+        user.id,
+        room,
+        id,
+      );
     if (!media) {
       throw new NotFoundException('File not found');
     }
     return media;
   }
 
-  @Get(':id')
-  async getFileById(@Param('id') id: string) {
-    const media: PopulatedMedia = await this.fileUploadService.findById(id);
-    if (!media) {
-      throw new NotFoundException('File not found');
-    }
-    return media;
-  }
-
-  @Post('single')
+  @Post('single/:room')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -91,8 +91,10 @@ export class FileUploadController {
   )
   async uploadSingleFile(
     @RequestedUser() user: any,
-    @UploadedFile() file: Express.Multer.File,
+    @Param('room') room: string,
+    @UploadedFile()
+    file: Express.Multer.File,
   ) {
-    return this.fileUploadService.uploadFile(user.id, file);
+    return this.fileUploadService.uploadFile(user.id, room, file);
   }
 }

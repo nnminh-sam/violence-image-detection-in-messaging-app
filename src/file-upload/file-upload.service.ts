@@ -3,14 +3,17 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { Media, MediaDocument, PopulatedMedia } from './entities/media.entity';
+import { Media, PopulatedMedia } from './entities/media.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { MediaStatus } from './entities/media-status.enum';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { MembershipService } from 'src/membership/membership.service';
 
 @Injectable()
 export class FileUploadService {
@@ -19,6 +22,7 @@ export class FileUploadService {
   constructor(
     @InjectModel(Media.name)
     private mediaModel: Model<Media>,
+    private readonly membershipService: MembershipService,
   ) {}
 
   private getFileAbsolutePath(filename: string) {
@@ -34,8 +38,13 @@ export class FileUploadService {
     const data = (await this.mediaModel
       .findOne({ _id: id })
       .populate({
-        path: 'user',
+        path: 'sender',
         select: '-__v -password -deletedAt',
+        transform: MongooseDocumentTransformer,
+      })
+      .populate({
+        path: 'conversation',
+        select: '-__v -deletedAt',
         transform: MongooseDocumentTransformer,
       })
       .transform(MongooseDocumentTransformer)
@@ -47,21 +56,47 @@ export class FileUploadService {
     }
   }
 
-  async findByFilename(filename: string) {
-    const data = (await this.mediaModel
-      .findOne({ filename })
-      .populate({
-        path: 'user',
-        select: '-__v -password -deletedAt',
-        transform: MongooseDocumentTransformer,
-      })
-      .transform(MongooseDocumentTransformer)
-      .select({ __v: 0 })
-      .exec()) as PopulatedMedia;
+  async getMediaInConversationById(
+    requestUserId: string,
+    conversationId: string,
+    mediaId: string,
+  ) {
+    const requestUserMembership =
+      await this.membershipService.findByUserIdAndConversationId(
+        requestUserId,
+        conversationId,
+      );
+    if (!requestUserMembership)
+      throw new UnauthorizedException(
+        'User is not a member of the conversation',
+      );
 
-    if (this.checkFileExist(filename)) {
-      return data;
-    }
+    const media = await this.findById(mediaId);
+    if (!media) throw new NotFoundException('File not found');
+
+    return media;
+  }
+
+  async streamMedia(
+    requestUserId: string,
+    conversationId: string,
+    mediaId: string,
+    httpResponse: any,
+  ) {
+    const media: PopulatedMedia = await this.findById(mediaId);
+    if (!media) throw new NotFoundException('File not found');
+
+    const requestUserMembership =
+      await this.membershipService.findByUserIdAndConversationId(
+        requestUserId,
+        conversationId,
+      );
+    if (!requestUserMembership)
+      throw new UnauthorizedException(
+        'User is not a member of the conversation',
+      );
+
+    return httpResponse.sendFile(media.filePath);
   }
 
   async findAll() {
@@ -79,14 +114,29 @@ export class FileUploadService {
     return data.filter((item: Media) => this.checkFileExist(item.filename));
   }
 
-  async uploadFile(requestUserId: string, file: Express.Multer.File) {
+  async uploadFile(
+    requestUserId: string,
+    room: string,
+    file: Express.Multer.File,
+  ) {
     if (!file) {
       throw new BadRequestException('File upload failed.');
     }
 
+    const requestUserMembership =
+      await this.membershipService.findByUserIdAndConversationId(
+        requestUserId,
+        room,
+      );
+    if (!requestUserMembership)
+      throw new UnauthorizedException(
+        'User is not a member of the conversation',
+      );
+
     try {
       const data: any = await new this.mediaModel({
-        user: requestUserId,
+        sender: requestUserId,
+        conversation: room,
         originalname: file.originalname,
         filename: file.filename,
         filePath: this.getFileAbsolutePath(file.filename),
