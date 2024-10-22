@@ -128,24 +128,9 @@ export class MediaService {
     return media;
   }
 
-  async streamMedia(
-    requestUserId: string,
-    conversationId: string,
-    mediaId: string,
-    httpResponse: any,
-  ) {
+  async streamMedia(mediaId: string, httpResponse: any) {
     const media: PopulatedMedia = await this.findById(mediaId);
     if (!media) throw new NotFoundException('File not found');
-
-    const requestUserMembership =
-      await this.membershipService.findByUserIdAndConversationId(
-        requestUserId,
-        conversationId,
-      );
-    if (!requestUserMembership)
-      throw new UnauthorizedException(
-        'User is not a member of the conversation',
-      );
 
     return httpResponse.sendFile(media.filePath);
   }

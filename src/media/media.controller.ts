@@ -29,22 +29,17 @@ const API_URL = `${envVar.API_PREFIX}/${envVar.API_VERSION}/media`;
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 const allowedFileExtensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov'];
 
-@UseGuards(JwtGuard)
 @Controller(API_URL)
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
-  @Get('stream/:room')
-  async streamFileById(
-    @RequestedUser() user: any,
-    @Param('room') room: string,
-    @Query('id') id: string,
-    @Res() res: Response,
-  ) {
-    return this.mediaService.streamMedia(user.id, room, id, res);
+  @Get('stream')
+  async streamFileById(@Query('id') id: string, @Res() res: Response) {
+    return this.mediaService.streamMedia(id, res);
   }
 
   @Get('sent')
+  @UseGuards(JwtGuard)
   async getAllUserSentMedia(
     @RequestedUser() user: any,
     @Query('page') page: number,
@@ -68,6 +63,7 @@ export class MediaController {
   }
 
   @Get('/:room')
+  @UseGuards(JwtGuard)
   async getMediaInRoomById(
     @RequestedUser() user: any,
     @Query('id') id: string,
@@ -82,6 +78,7 @@ export class MediaController {
   }
 
   @Post('single/:room')
+  @UseGuards(JwtGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -119,11 +116,13 @@ export class MediaController {
   }
 
   @Patch('approve/:id')
+  @UseGuards(JwtGuard)
   async approveMedia(@RequestedUser() user: any, @Param('id') id: string) {
     return this.mediaService.approveMedia(user.id, id);
   }
 
   @Patch('reject/:id')
+  @UseGuards(JwtGuard)
   async rejectMedia(@RequestedUser() user: any, @Param('id') id: string) {
     return this.mediaService.rejectMedia(user.id, id);
   }

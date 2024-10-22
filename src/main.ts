@@ -19,9 +19,8 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: '*',
   });
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    // prefix: '/files/',
-  });
+  const staticFilePath: string = process.env.STATIC_FILE_PATH;
+  app.useStaticAssets(join(__dirname, '..', staticFilePath));
 
   app.useGlobalPipes(
     new ValidationPipe({
