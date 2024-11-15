@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
-import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Media, MediaSchema } from './entities/media.entity';
@@ -9,6 +8,8 @@ import { MediaService } from './media.service';
 import { MediaController } from './media.controller';
 import { EventModule } from 'src/event/event.module';
 import { MessageModule } from 'src/message/message.module';
+import { HttpModule } from '@nestjs/axios';
+import { ServeStaticModule } from '@nestjs/serve-static';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MessageModule } from 'src/message/message.module';
     MembershipModule,
     EventModule,
     MessageModule,
+    HttpModule,
   ],
   providers: [MediaService],
   controllers: [MediaController],

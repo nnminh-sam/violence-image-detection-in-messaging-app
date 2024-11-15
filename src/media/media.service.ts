@@ -18,6 +18,8 @@ import { EventGateway } from '../event/event.gateway';
 import { MessageService } from 'src/message/message.service';
 import { Conversation } from 'src/conversation/entities/conversation.entity';
 import { PaginationDto } from 'src/helper/types/pagination.dto';
+import { HttpService } from '@nestjs/axios';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class MediaService {
@@ -29,6 +31,7 @@ export class MediaService {
     private readonly membershipService: MembershipService,
     private readonly eventGateway: EventGateway,
     private readonly messageService: MessageService,
+    private readonly httpService: HttpService,
   ) {}
 
   private getFileAbsolutePath(filename: string) {
@@ -150,6 +153,13 @@ export class MediaService {
         'User is not a member of the conversation',
       );
 
+    const url: string = `http://localhost:8000/api/simple?media_url=${this.getFileAbsolutePath(file.filename)}`;
+    const response$ = this.httpService.get(url);
+    const response = await lastValueFrom(response$);
+    console.log('data:', response.data);
+    const predictResult: string = response.data.data.predicted_class;
+    console.log('Predicted class:', predictResult);
+
     try {
       const data: any = await new this.mediaModel({
         sender: requestUserId,
@@ -159,7 +169,10 @@ export class MediaService {
         filePath: this.getFileAbsolutePath(file.filename),
         size: file.size,
         mimetype: file.mimetype,
-        status: MediaStatus.PENDING,
+        status:
+          predictResult === 'NonViolence'
+            ? MediaStatus.APPROVED
+            : MediaStatus.REJECTED,
       }).save();
 
       const messageResponse = await this.messageService.create(
