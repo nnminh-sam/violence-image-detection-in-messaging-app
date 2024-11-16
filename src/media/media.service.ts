@@ -20,6 +20,8 @@ import { Conversation } from 'src/conversation/entities/conversation.entity';
 import { PaginationDto } from 'src/helper/types/pagination.dto';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 @Injectable()
 export class MediaService {
@@ -153,14 +155,12 @@ export class MediaService {
         'User is not a member of the conversation',
       );
 
-    const url: string = `http://localhost:8000/api/simple?media_url=${this.getFileAbsolutePath(file.filename)}`;
-    const response$ = this.httpService.get(url);
-    const response = await lastValueFrom(response$);
-    console.log('data:', response.data);
-    const predictResult: string = response.data.data.predicted_class;
-    console.log('Predicted class:', predictResult);
-
     try {
+      const url: string = `${process.env.PREDICT_HOST}/api/v1/predict?url=${this.getFileAbsolutePath(file.filename)}`;
+      const response$ = this.httpService.get(url);
+      const predictResponse = await lastValueFrom(response$);
+      const predictResult: string = predictResponse.data.predicted_class;
+
       const data: any = await new this.mediaModel({
         sender: requestUserId,
         conversation: room,
