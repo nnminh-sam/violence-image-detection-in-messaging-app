@@ -15,7 +15,10 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const envVar = process.env;
-const DATABASE_CONNECTION_STRING = `mongodb://${envVar.DATABASE_HOST}:${envVar.DATABASE_PORT}/${envVar.DATABASE_NAME}`;
+const DATABASE_CONNECTION_STRING: string =
+  envVar.MODE === 'prod'
+    ? `${envVar.DATABASE_CONNECTION_STRING_PROD}`
+    : `${envVar.DATABASE_CONNECTION_STRING_DEV}`;
 
 @Module({
   imports: [
@@ -40,6 +43,7 @@ const DATABASE_CONNECTION_STRING = `mongodb://${envVar.DATABASE_HOST}:${envVar.D
 })
 export class AppModule {
   constructor() {
+    console.log(`Connecting to ${envVar.MODE} database`);
     if (envVar.DATABASE_DEBUG_MODE === 'true') {
       mongoose.set('debug', true);
     }

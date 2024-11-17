@@ -160,6 +160,7 @@ export class MediaService {
       const response$ = this.httpService.get(url);
       const predictResponse = await lastValueFrom(response$);
       const predictResult: string = predictResponse.data.predicted_class;
+      
 
       const data: any = await new this.mediaModel({
         sender: requestUserId,
