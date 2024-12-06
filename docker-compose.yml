@@ -1,6 +1,7 @@
 services:
   app:
-    image: nestjs-app:latest
+    container_name: message-backend-app
+    image: message-backend-app
     build:
       context: .
       dockerfile: Dockerfile
