@@ -21,11 +21,13 @@ import { PaginationDto } from 'src/helper/types/pagination.dto';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
 import * as dotenv from 'dotenv';
+import { Cron } from '@nestjs/schedule';
 dotenv.config();
 
 @Injectable()
 export class MediaService {
   private logger: Logger = new Logger(MediaService.name);
+  private predictServerAvailability: boolean;
 
   constructor(
     @InjectModel(Media.name)
@@ -34,7 +36,11 @@ export class MediaService {
     private readonly eventGateway: EventGateway,
     private readonly messageService: MessageService,
     private readonly httpService: HttpService,
-  ) {}
+  ) {
+    this.checkPredictServiceHealth().then((result) => {
+      this.predictServerAvailability = result;
+    });
+  }
 
   private getFileAbsolutePath(filename: string) {
     return join(__dirname, '..', '..', 'uploads', filename);
@@ -43,6 +49,46 @@ export class MediaService {
   private checkFileExist(filename: string) {
     const filePath = this.getFileAbsolutePath(filename);
     return existsSync(filePath);
+  }
+
+  private async checkPredictServiceHealth() {
+    try {
+      const httpService = new HttpService();
+      const url: string = `${process.env.PREDICT_HOST}/system/health`;
+      const response$ = await httpService.get(url);
+      const predictServerHealthResponse = await lastValueFrom(response$);
+      if (predictServerHealthResponse.status === 200) {
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      return false;
+    }
+  }
+
+  private async predictMedia(file: Express.Multer.File): Promise<MediaStatus> {
+    try {
+      const url: string = `${process.env.PREDICT_HOST}/api/v1/predict?url=${this.getFileAbsolutePath(file.filename)}`;
+      const response$ = this.httpService.get(url);
+      const predictResponse = await lastValueFrom(response$);
+      const predictResult: string = predictResponse.data.predicted_class;
+      return predictResult === 'NonViolence'
+        ? MediaStatus.APPROVED
+        : MediaStatus.REJECTED;
+    } catch (error: any) {
+      this.logger.error('Failed to predict media', error);
+      return MediaStatus.REJECTED;
+    }
+  }
+
+  @Cron('*/1 * * * *')
+  async checkHealth() {
+    const isPredictServiceAvailable = await this.checkPredictServiceHealth();
+    if (isPredictServiceAvailable === true) {
+      this.logger.log('Predict server is running healthy');
+    } else {
+      this.logger.warn('Predict server is unavailable');
+    }
   }
 
   async findById(id: string) {
@@ -142,7 +188,7 @@ export class MediaService {
 
   async create(requestUserId: string, room: string, file: Express.Multer.File) {
     if (!file) {
-      throw new BadRequestException('File upload failed.');
+      throw new BadRequestException('File not found.');
     }
 
     const requestUserMembership =
@@ -156,11 +202,10 @@ export class MediaService {
       );
 
     try {
-      const url: string = `${process.env.PREDICT_HOST}/api/v1/predict?url=${this.getFileAbsolutePath(file.filename)}`;
-      const response$ = this.httpService.get(url);
-      const predictResponse = await lastValueFrom(response$);
-      const predictResult: string = predictResponse.data.predicted_class;
-      
+      const mediaStatus: MediaStatus =
+        this.predictServerAvailability === false
+          ? MediaStatus.REJECTED
+          : await this.predictMedia(file);
 
       const data: any = await new this.mediaModel({
         sender: requestUserId,
@@ -170,10 +215,7 @@ export class MediaService {
         filePath: this.getFileAbsolutePath(file.filename),
         size: file.size,
         mimetype: file.mimetype,
-        status:
-          predictResult === 'NonViolence'
-            ? MediaStatus.APPROVED
-            : MediaStatus.REJECTED,
+        status: mediaStatus,
       }).save();
 
       const messageResponse = await this.messageService.create(
@@ -185,13 +227,11 @@ export class MediaService {
         },
         requestUserId,
       );
-
       const response = await this.findById(data._id.toString());
-
       this.eventGateway.notifyNewMedia({ media: response });
-
       return response;
     } catch (error: any) {
+      console.log('🚀 ~ MediaService ~ create ~ error:', error);
       this.logger.fatal(error);
       throw new InternalServerErrorException('Failed to upload file', error);
     }

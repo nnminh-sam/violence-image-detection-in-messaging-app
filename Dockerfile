@@ -8,6 +8,7 @@ RUN npm install
 
 COPY . .
 
+# Ensure the build process creates the dist directory
 RUN npm run build
 
 EXPOSE 3000

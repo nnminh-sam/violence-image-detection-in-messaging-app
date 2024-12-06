@@ -10,6 +10,7 @@ import { EventModule } from 'src/event/event.module';
 import { MessageModule } from 'src/message/message.module';
 import { HttpModule } from '@nestjs/axios';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
       },
     ]),
     MulterModule.register({ dest: './uploads' }),
+    ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
     }),

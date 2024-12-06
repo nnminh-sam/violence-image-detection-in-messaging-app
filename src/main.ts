@@ -7,6 +7,7 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { ApiLoggingInterceptor } from './interceptor/api-logging.interceptor';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { HttpService } from '@nestjs/axios';
 
 dotenv.config();
 
@@ -42,5 +43,6 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ApiLoggingInterceptor());
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
   await app.listen(process.env.PORT);
+  console.log(`Server is running at: ${process.env.PORT}`);
 }
 bootstrap();
