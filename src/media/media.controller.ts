@@ -12,16 +12,16 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { query, Response } from 'express';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as dotenv from 'dotenv';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
 import { RequestedUser } from 'src/decorator/requested-user.decorator';
 import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import { MediaService } from './media.service';
 import { PopulatedMedia } from './entities/media.entity';
 import { MediaStatus } from './entities/media-status.enum';
+import * as multer from 'multer';
+import { extname } from 'path';
 dotenv.config();
 
 const envVar = process.env;
@@ -81,7 +81,7 @@ export class MediaController {
   @UseGuards(JwtGuard)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
+      storage: multer.diskStorage({
         destination: './uploads',
         filename: (req, file, cb) => {
           const randomName = Array(32)

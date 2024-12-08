@@ -11,7 +11,7 @@ import { Media, PopulatedMedia } from './entities/media.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { MediaStatus } from './entities/media-status.enum';
 import { MongooseDocumentTransformer } from 'src/helper/mongoose/document-transformer';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { MembershipService } from 'src/membership/membership.service';
 import { EventGateway } from '../event/event.gateway';
@@ -21,6 +21,7 @@ import { PaginationDto } from 'src/helper/types/pagination.dto';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
 import * as dotenv from 'dotenv';
+import * as FormData from 'form-data';
 import { Cron } from '@nestjs/schedule';
 dotenv.config();
 
@@ -67,9 +68,18 @@ export class MediaService {
   }
 
   private async predictMedia(file: Express.Multer.File): Promise<MediaStatus> {
+    const fileAbsolutePath = this.getFileAbsolutePath(file.filename);
+    const fileBuffer = readFileSync(fileAbsolutePath);
+    const url: string = `${process.env.PREDICT_HOST}/api/v2/predict/`;
+    const formData = new FormData();
+    formData.append('file', fileBuffer, file.originalname);
+
     try {
-      const url: string = `${process.env.PREDICT_HOST}/api/v1/predict?url=${this.getFileAbsolutePath(file.filename)}`;
-      const response$ = this.httpService.get(url);
+      const response$ = this.httpService.post(url, formData, {
+        headers: {
+          ...formData.getHeaders(),
+        },
+      });
       const predictResponse = await lastValueFrom(response$);
       const predictResult: string = predictResponse.data.predicted_class;
       return predictResult === 'NonViolence'
@@ -231,7 +241,6 @@ export class MediaService {
       this.eventGateway.notifyNewMedia({ media: response });
       return response;
     } catch (error: any) {
-      console.log('🚀 ~ MediaService ~ create ~ error:', error);
       this.logger.fatal(error);
       throw new InternalServerErrorException('Failed to upload file', error);
     }
