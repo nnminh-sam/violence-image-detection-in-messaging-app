@@ -405,6 +405,37 @@ export class MembershipService {
     requestUserId: string,
     banUserDto: BanUserDto,
   ): Promise<PopulatedMembership> {
+    if (requestUserId === 'system') {
+      const banningUserMembership: PopulatedMembership =
+        await this.findByUserIdAndConversationId(
+          banUserDto.targetUser,
+          banUserDto.conversation,
+        );
+      if (!banningUserMembership)
+        throw new NotFoundException(
+          'Target user is not a member of conversation',
+        );
+      try {
+        const result: MembershipDocument =
+          await this.membershipModel.findByIdAndUpdate(
+            banningUserMembership.id,
+            {
+              status: MembershipStatus.BANNED,
+              role: MembershipRole.GUEST,
+              bannedAt: new Date(),
+            },
+            { new: true },
+          );
+        return await this.findById(result._id.toString());
+      } catch (error: any) {
+        this.logger.fatal(error);
+        throw new InternalServerErrorException(
+          'Failed to update membership',
+          error,
+        );
+      }
+    }
+
     const requestedUserMembership: PopulatedMembership =
       await this.findByUserIdAndConversationId(
         requestUserId,

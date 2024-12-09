@@ -216,9 +216,15 @@ export class MediaService {
         'User is not a member of the conversation',
       );
 
-    try {
-      const mediaStatus: MediaStatus = await this.predictMedia(file);
+    const mediaStatus: MediaStatus = await this.predictMedia(file);
+    if (mediaStatus === MediaStatus.REJECTED) {
+      const response = await this.membershipService.banUser('system', {
+        targetUser: requestUserId,
+        conversation: room,
+      });
+    }
 
+    try {
       const data: any = await new this.mediaModel({
         sender: requestUserId,
         conversation: room,
