@@ -45,6 +45,7 @@ export class RelationshipController {
     @Query('size') size: number,
     @Query('sortBy') sortBy: string,
     @Query('orderBy') orderBy: string,
+    @Query('name') name: string,
   ) {
     return await this.relationshipService.findMyRelationships(
       user.id,
@@ -52,6 +53,7 @@ export class RelationshipController {
       size || 10,
       sortBy || 'createdAt',
       orderBy || 'desc',
+      name,
     );
   }
 

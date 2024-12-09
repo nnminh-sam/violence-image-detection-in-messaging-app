@@ -177,6 +177,7 @@ export class RelationshipService {
     size: number,
     sortBy: string,
     orderBy: string,
+    name: string,
   ) {
     const filter: any = {
       $or: [{ userA: userId }, { userB: userId }],
