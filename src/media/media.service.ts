@@ -68,6 +68,11 @@ export class MediaService {
   }
 
   private async predictMedia(file: Express.Multer.File): Promise<MediaStatus> {
+    const predictServerAvailability = await this.checkPredictServiceHealth();
+    if (predictServerAvailability === false) {
+      return MediaStatus.REJECTED;
+    }
+
     const fileAbsolutePath = this.getFileAbsolutePath(file.filename);
     const fileBuffer = readFileSync(fileAbsolutePath);
     const url: string = `${process.env.PREDICT_HOST}/api/v2/predict/`;
@@ -212,10 +217,7 @@ export class MediaService {
       );
 
     try {
-      const mediaStatus: MediaStatus =
-        this.predictServerAvailability === false
-          ? MediaStatus.REJECTED
-          : await this.predictMedia(file);
+      const mediaStatus: MediaStatus = await this.predictMedia(file);
 
       const data: any = await new this.mediaModel({
         sender: requestUserId,
