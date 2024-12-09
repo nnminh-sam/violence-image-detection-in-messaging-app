@@ -86,7 +86,7 @@ export class MediaService {
         },
       });
       const predictResponse = await lastValueFrom(response$);
-      const predictResult: string = predictResponse.data.predicted_class;
+      const predictResult: string = predictResponse.data.data.predicted_class;
       return predictResult === 'NonViolence'
         ? MediaStatus.APPROVED
         : MediaStatus.REJECTED;
