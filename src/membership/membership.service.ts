@@ -231,8 +231,9 @@ export class MembershipService {
     size: number,
     sortBy: string,
     orderBy: string,
+    name: string,
   ) {
-    const filter: any = {
+    const filter: Record<string, any> = {
       user: userId,
       status: MembershipStatus.PARTICIPATING,
     };
@@ -265,15 +266,46 @@ export class MembershipService {
       })
       .exec()) as PopulatedMembership[];
 
+    if (!name) {
+      return {
+        data,
+        metadata: {
+          pagination: {
+            page,
+            size,
+            totalPage,
+          },
+          count: data.length,
+        },
+      };
+    }
+
+    const expectedData: PopulatedMembership[] = data.filter(
+      (membership): PopulatedMembership => {
+        const conversation: Conversation = membership.conversation;
+        if (conversation.type === ConversationType.DIRECT) {
+          const partner: User = membership.partner;
+          const fullName: string = `${partner.firstName} ${partner.lastName}`;
+          if (fullName.toLowerCase().includes(name.toLowerCase())) {
+            return membership;
+          }
+        }
+
+        if (conversation.name.toLowerCase().includes(name.toLowerCase())) {
+          return membership;
+        }
+      },
+    );
+
     return {
-      data,
+      data: expectedData,
       metadata: {
         pagination: {
           page,
           size,
           totalPage,
         },
-        count: data.length,
+        count: expectedData.length,
       },
     };
   }

@@ -69,6 +69,7 @@ export class MembershipController {
     @Query('size') size: number,
     @Query('sortBy') sortBy: string,
     @Query('orderBy') orderBy: string,
+    @Query('name') name: string,
   ) {
     page = page || 1;
     size = size || 10;
@@ -81,6 +82,7 @@ export class MembershipController {
       size,
       sortBy,
       orderBy,
+      name,
     );
   }
 
